@@ -1,6 +1,6 @@
 psycopg[binary]
 sqlalchemy
-xmltodict
+lxml
 pyyaml
 pandas
 chime
