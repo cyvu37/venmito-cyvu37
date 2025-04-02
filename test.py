@@ -1,8 +1,321 @@
-x = """
+"""
+Always end test script with `exit()`.
+"""
+
+from rich import print
+from rich.panel import Panel
+from rich.text import Text
+panel = Panel(Text("Hello", justify="right"), width=100)
+print(panel)
+exit()
+
+
+
+from time import sleep
+from rich.table import Column
+from rich.progress import Progress, BarColumn, TextColumn
+text_column = TextColumn("{task.description}", table_column=Column(ratio=1))
+bar_column = BarColumn(bar_width=None, table_column=Column(ratio=2))
+progress = Progress(text_column, bar_column, expand=True)
+with progress:
+    for n in progress.track(range(30)):
+        progress.print(n)
+        sleep(0.1)
+
+
+import time
+from rich.progress import Progress
+with Progress() as progress:
+    task1 = progress.add_task("[red]Downloading...", total=1000)
+    task2 = progress.add_task("[green]Processing...", total=1000)
+    task3 = progress.add_task("[cyan]Cooking...", total=1000)
+    while not progress.finished:
+        progress.update(task1, advance=0.5)
+        progress.update(task2, advance=0.3)
+        progress.update(task3, advance=0.9)
+        time.sleep(0.02)
+
+
+
+import time
+from rich.progress import track
+for i in track(range(20), description="Processing..."):
+    time.sleep(1)  # Simulate work being done
+
+
+'''import os, pandas as pd
+from time import time
+from json import load as json_load
+
+DIR_PROGRAM = os.getcwd()
+DIR_DATA = os.path.join( DIR_PROGRAM, "data" )
+DIR_PARENT = os.sep.join( DIR_PROGRAM.split(os.sep)[:-1] )
+DIR_OUTPUT = os.path.join( DIR_PARENT, "Venmito Output" )
+
+b_items = False
+DJ = {}; dj = {}
+
+# Method 1
+t = time()
+with open( os.path.join( DIR_DATA, "people.json" ), 'r' ) as f:
+    DJ = pd.read_json(f)
+DJ["id"] = DJ["id"].astype(int)
+# Organize new columns.
+DJ["phone"] = DJ["telephone"]
+DJ["city"] = [ i["City"] for i in DJ["location"] ]
+DJ["country"] = [ i["Country"] for i in DJ["location"] ]
+DJ["has_android"] = [ "Android" in d for d in DJ["devices"] ]
+DJ["has_iphone"] = [ "Iphone" in d for d in DJ["devices"] ]
+DJ["has_desktop"] = [ "Desktop" in d for d in DJ["devices"] ]
+# Drop irrelevant columns.
+DJ = DJ.drop(columns=["telephone", "location", "devices"])
+print(time() - t)
+print(DJ)
+# y = x/(1-%)
+# x/y = 1-%
+# Method 2
+def func_process_people_json( input: dict ) -> dict:
+    """
+    Function to process all parts of `people.json`. FEATURE: Scalable for new exceptions!
+    """
+    output = {}
+    #i2 = { k.lower():v for k, v in input.items() }
+    for k, v in input.items():
+        match k:
+            case "id":
+                output[k.lower()] = int(v)
+            case "location":
+                # Get `{'City': ..., 'Country': ...}`.
+                output.update({ key.lower():value for key, value in v.items() })
+            case "telephone":
+                # Change "telephone" to "phone".
+                output["phone"] = v
+            case "devices":
+                # Get `"devices": [...]`.
+                output["has_android"] = "Android" in v
+                output["has_iphone"] = "Iphone" in v
+                output["has_desktop"] = "Desktop" in v
+            case _:
+                output[k.lower()] = v
+    return output
+
+t = time()
+with open( os.path.join( DIR_DATA, "people.json" ), 'r' ) as f:
+    DJ = json_load( f )
+for person in DJ:
+    dj[ int(person["id"]) ] = func_process_people_json( person )
+DJ = pd.DataFrame.from_dict( dj, orient='index' )
+print(time() - t)
+print(DJ)
+
+t = time()
+x = {v["phone"]: k for k, v in dj.items()}
+print(time() - t)
+
+t = time()
+x = dict(reversed(list(dj.items())))
+print(time() - t)
+exit()'''
+
+
+
+'''# BOOKMARK: ChatGPT generated error handling
+from typing import List, Tuple
+from rich.console import Console
+from rich.traceback import install
+import sys
+import os
+
+# Initialize the Console for rich output
+console = Console(record=True)
+
+# Install the global exception handler
+install(console=console)
+
+def divide_by(number: float, divisor: float) -> float:
+    """Divide a number by the divisor."""
+    return number / divisor  # May raise ZeroDivisionError if divisor is 0
+
+def divide_all(divides: List[Tuple[float, float]]) -> None:
+    """Attempt to divide pairs of numbers, handling exceptions gracefully."""
+    for number, divisor in divides:
+        console.print(f"\nDividing {number} by {divisor}")
+        try:
+            result = divide_by(number, divisor)
+        except Exception as e:
+            # Print the exception type and message
+            console.print(f"[bold red]Error:[/bold red] {e.__class__.__name__}: {e}")
+
+            # Capture and print the most recent traceback
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            console.print_exception(max_frames=1)
+
+            # Save the full traceback to an HTML file
+            error_dir = "errors"
+            os.makedirs(error_dir, exist_ok=True)
+            error_filename = os.path.join(error_dir, f"traceback_{number}_div_{divisor}.html")
+            with open(error_filename, "w", encoding="utf-8") as error_file:
+                error_file.write(console.export_html(clear=False))
+            console.print(f"Full traceback saved to [bold blue]{error_filename}[/bold blue]\n")
+        else:
+            console.print(f"Result: {result}\n")
+
+# List of number pairs to divide
+DIVIDES = [
+    (1000, 200),
+    (10000, 500),
+    (1, 0),
+    (0, 1000000),
+    (3.1427, 2),
+    (888, 0),
+    (2**32, 2**16),
+]
+
+# Execute the division operations
+divide_all(DIVIDES)
+'''
+
+'''"""
+Basic example to show how to print an traceback of an exception
+"""
+from typing import List, Tuple
+from rich.console import Console
+
+from datetime import datetime
+from time import sleep
+
+console = Console()
+
+
+def divide_by(number: float, divisor: float) -> float:
+    """Divide any number by zero."""
+    # Will throw a ZeroDivisionError if divisor is 0
+    result = number / divisor
+    return result
+
+
+def divide_all(divides: List[Tuple[float, float]]) -> None:
+    """Do something impossible every day."""
+
+    for number, divisor in divides:
+        console.print(f"dividing {number} by {divisor}")
+        try:
+            result = divide_by(number, divisor)
+        except Exception:
+            console.print_exception(extra_lines=8, show_locals=True)
+        else:
+            console.print(f" = {result}")
+
+
+DIVIDES = [
+    (1000, 200),
+    (10000, 500),
+    (1, 0),
+    (0, 1000000),
+    (3.1427, 2),
+    (888, 0),
+    (2**32, 2**16),
+]
+
+divide_all(DIVIDES)
+exit()'''
+
+
+'''import os, pandas as pd
+
+DIR_PROGRAM = os.getcwd()
+DIR_DATA = os.path.join( DIR_PROGRAM, "data" )
+DIR_PARENT = os.sep.join( DIR_PROGRAM.split(os.sep)[:-1] )
+DIR_OUTPUT = os.path.join( DIR_PARENT, "Venmito Output" )
+
+b_items = False
+with open(os.path.join(DIR_DATA, "transactions.xml")) as f:
+    TRANS_UNIQUE = pd.read_xml(f)
+    if "items" in TRANS_UNIQUE.columns:
+        TRANS_UNIQUE.drop( columns=["items"] )
+        b_items = True
+        
+if b_items:
+    with open(os.path.join(DIR_DATA, "transactions.xml")) as f:
+        pass
+exit()'''
+
+'''
+from time import time
+
+FILE_REQ = os.path.join( DIR_PROGRAM, "requirements.txt" )
+ignore_symbols = ["==", "["]
+req_pkgs = []
+with open(FILE_REQ, "r") as r:
+    t = time()
+    req_pkgs = [i.split(next((s for s in ignore_symbols if s in i), None))[0] for i in r.readlines()]
+    print(time() - t)
+    print(req_pkgs)
+
+with open(FILE_REQ, "r") as r:
+    t = time()
+    req_pkgs = [i.split(next((s for s in ignore_symbols if s in i), i))[0] for i in r.readlines()]
+    print(time() - t)
+    print(req_pkgs)
+
+with open(FILE_REQ, "r") as r:
+    t = time()
+    req_pkgs = [next((i.split(s)[0] for s in ignore_symbols if s in i), i) for i in r.readlines()]
+    print(time() - t)
+    print(req_pkgs)
+exit()'''
+
+
+'''x = """
     TEST 
     TEST"""
 print(x)
-exit()
+exit()'''
+
+
+
+'''# BOOKMARK: Old function for processing all elements of `transactions.xml`.
+
+TRANS_UNIQUE = [ self._func_process_transactions_xml( transaction, TRANS_PRODUCTS, lookup_phone ) for transaction in DT ]
+
+def _func_process_transactions_xml( self, input: dict, TRAN_PRODUCTS: list, lookup_phone: dict ) -> dict:
+    """
+    Function to process the items of each transaction of `transactions.xml`. FEATURE: Scalable for new exceptions!
+    """
+    
+    i2 = {}
+    b_can_lookup = lookup_phone != {}
+    # Make keys lowercase and capture transaction ID.
+    for k, v in input.items():
+        match k:
+            case "@id":
+                i2["id"] = v
+            case _:
+                i2[k.lower()] = v
+    # Process data.
+    for k, v in i2.items():
+        match k:
+            case "items":
+                # Create one row for each item in table `transaction_products`.
+                if isinstance(v["item"], dict):
+                    TRAN_PRODUCTS.append( self._func_process_item( v["item"], i2["id"] ) )
+                elif isinstance(v["item"], list):
+                    TRAN_PRODUCTS.extend( [ self._func_process_item( item, i2["id"] ) for item in v["item"] ] )
+            case "phone":
+                if b_can_lookup:
+                    transaction_row["customer_id"] = lookup_phone[v]
+            case _:
+                transaction_row[k] = v
+    return transaction_row
+'''
+
+
+
+
+
+
+
+
 
 
 '''
@@ -389,7 +702,7 @@ print("MAIN MENU\n[0] Import data\n[1]")
 
 
 
-
+'''
 import os, xmltodict
 
 DIR_PROGRAM = os.getcwd()
@@ -456,7 +769,7 @@ if FILE_EXIST["transactions.xml"]:
     print(TRAN_UNIQUE)
     print(TRAN_PRODUCTS)
 
-exit()
+exit()'''
 
 
 
@@ -1232,7 +1545,7 @@ os.system(command)"""
 #
 # ARCHIVED
 #
-exit()
+'''exit()
 
 
 
@@ -1410,5 +1723,5 @@ if WILL_ADD:
                     FOREIGN KEY (customer_id) REFERENCES people(id) 
                     FOREIGN KEY (recipient_id) REFERENCES people(id)
                 """)
-
+'''
 #
