@@ -419,82 +419,12 @@ try:
 
 
         def _func_first_time( self ):
-            #self._func_reset_database()
-            #self._func_create_tables() # DEV NOTE: For creating an error manually.
             if self.b_can_add_data_files:
                 self._func_process_master( "replace" )
-                #self._func_handle_views()
+                #self._func_handle_views() # DEV NOTE: TEST
             else:
                 CONSOLE.print( f"[bold red]* ERROR[/bold red] | [{C}]No valid files detected in `data` folder. Can't continue.[/{C}]\n{R_QUIT}" )
                 sys.exit()
-
-
-        def _func_reset_database( self ):
-            cur = self.conn.cursor()
-            cur.execute( "DROP TABLE IF EXISTS people CASCADE" )
-            cur.execute( "DROP TABLE IF EXISTS transfers CASCADE" )
-            cur.execute( "DROP TABLE IF EXISTS promotions CASCADE" )
-            cur.execute( "DROP TABLE IF EXISTS transaction_ids CASCADE" )
-            cur.execute( "DROP TABLE IF EXISTS transaction_products CASCADE" )
-            cur.execute( "DROP VIEW IF EXISTS view_store_products CASCADE" )
-            cur.execute( "DROP VIEW IF EXISTS view_transactions CASCADE" )
-            self.conn.commit()
-            cur.close()
-
-
-        def _func_create_tables( self ):
-            """
-            Create tables with foreign key attributes and other features. 
-            
-            If tables exist and are broken, run `self._func_reset_database()` first.
-            """
-            cur = self.conn.cursor()
-            cur.execute( """
-                        CREATE TABLE people ( 
-                            id INTEGER UNIQUE, 
-                            first_name TEXT, 
-                            last_name TEXT, 
-                            phone TEXT UNIQUE, 
-                            email TEXT UNIQUE, 
-                            city TEXT, 
-                            country TEXT, 
-                            has_android BOOLEAN, 
-                            has_iphone BOOLEAN, 
-                            has_desktop BOOLEAN 
-                        )""" )
-            cur.execute( """
-                        CREATE TABLE transfers ( 
-                            sender_id INTEGER REFERENCES people(id), 
-                            recipient_id INTEGER REFERENCES people(id), 
-                            amount FLOAT, 
-                            date DATE
-                        )""" )
-            cur.execute( """
-                        CREATE TABLE promotions ( 
-                            id INTEGER PRIMARY KEY, 
-                            customer_id INTEGER, 
-                            promotion TEXT, 
-                            responded BOOLEAN, 
-                            FOREIGN KEY(customer_id) REFERENCES people(id) 
-                        )""" )
-            cur.execute( """
-                        CREATE TABLE transaction_ids ( 
-                            id INTEGER PRIMARY KEY, 
-                            customer_id INTEGER, 
-                            store TEXT, 
-                            FOREIGN KEY(customer_id) REFERENCES people(id)
-                        )""" )
-            cur.execute( """
-                        CREATE TABLE transaction_products ( 
-                            transaction_id INTEGER, 
-                            item TEXT, 
-                            price FLOAT, 
-                            price_per_item FLOAT, 
-                            quantity INTEGER, 
-                            FOREIGN KEY(transaction_id) REFERENCES transaction_ids(id) 
-                        )""" )
-            self.conn.commit()
-            cur.close()
 
 
         def _func_handle_views( self ):
