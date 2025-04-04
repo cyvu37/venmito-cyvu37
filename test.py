@@ -2,7 +2,268 @@
 Always end test script with `exit()`.
 """
 
-from rich import print
+
+
+
+'''
+#
+# FUNCTION ARCHIVE 
+#
+        
+        def func_help_OLD( self ):
+            """
+            Present help menu.
+            """
+            self.b_change_lH = False
+            CONSOLE.print(f"\n\n{R_LINE}\n")
+            CONSOLE.print(R_HELP_MENU)
+            while True:
+                self.b_change_lH = self._func_msg_bubble_OLD( self.b_change_lH,
+                                                         "Read the HELP MENU above. Take action with the HELP DESK below." )
+                CONSOLE.print(R_HELP_DESK)
+                i = CONSOLE.input(fcolor("> ", C))
+                match i:
+                    case "g" | "github":
+                        try:
+                            open_new_tab( "https://github.com/cyvu37/venmito-cyvu37" )
+                            self.b_change_lH = False
+                            break
+                        except:
+                            self.b_change_lH = True
+                            self.bubble_txt = "Couldn't open GitHub."
+                            self.bubble_sty = "bold red"
+                    case "p" | "prev":
+                        break
+                    case "q" | "quit":
+                        self._func_quit()
+                    case "":
+                        self.b_change_lH = True
+                        self.bubble_txt = "No input. Try again."
+                        self.bubble_sty = "bold yellow"
+                    case _:
+                        self.b_change_lH = True
+                        self.bubble_txt = "Invalid input. Try again."
+                        self.bubble_sty = "bold yellow"
+            CONSOLE.print(f"\n\n{R_LINE}\n")
+        
+            
+
+        def _func_msg_bubble_OLD( self, b_change: bool = True, default_msg: str = None ):
+            """Template to make the message bubble.
+
+            Args:
+                b_change (bool, optional): Internal boolean tracking deviation from default message. Defaults to True.
+                default_msg (str, optional): The default message. Defaults to "".
+            """
+            if not b_change:
+                self.bubble_txt = default_msg
+                self.bubble_sty = C
+            CONSOLE.print("\n")
+            CONSOLE.print( Panel(
+                Text( self.bubble_txt, justify="center", style=self.bubble_sty ), 
+                title=Text( "VE Status", style=Style(italic=True, color=self.bubble_sty) ),
+                width=WIDTH, border_style=self.bubble_sty
+            ) )
+            CONSOLE.print("\n")
+            return False # Revert back to default message.
+
+
+        
+        def func_l1_menu_loop_v1( self ):
+            """
+            Loop to allow user to keep using this program after finishing a task.
+
+            The Level 1 command for nested loop handling.
+            """
+            self.b_change_l1 = False
+            """Must the default message be changed or not, including errors?"""
+            while True:
+                self.b_change_l1 = self._func_msg_bubble_v1( self.b_change_l1, "What would you like to do?" )
+                CONSOLE.print(R_MENU)
+                self.i_menu = CONSOLE.input("> ").lower()
+                match self.i_menu:
+                    case "1":
+                        self.func_l2_t1_1report()
+                    case "2":
+                        self.func_l2_input_t2_v1()
+                    case "3":
+                        self.b_change_l1 = True
+                        self.bubble_txt = f"{D_MENU[self.i_menu]}: Under construction. No DeepSeek model available yet."
+                        self.bubble_sty = "bold orange1"
+                    case "h" | "help":
+                        self.func_help_v1()
+                    case "q" | "quit":
+                        self._func_quit()
+                    case "":
+                        self.b_change_l1 = True
+                        self.bubble_txt = "No input. Try again."
+                        self.bubble_sty = "bold yellow"
+                    case _:     # Error input.c
+                        self.b_change_l1 = True
+                        self.bubble_txt = "Invalid input. Try again."
+                        self.bubble_sty = "bold yellow"
+
+        
+        def func_l2_input_t1_v1( self ):
+            """
+            Loop for Step 1 of Task 1: Prefab Reports
+            > Step 1: Select Output type.
+            > Step 2: Select HNR report.
+            > Step 3: Select Input type. 
+            
+            A Level 2 command for nested loop handling.
+            """
+            self.b_change_l2 = False
+            while True:
+                self.b_change_l2 = self._func_msg_bubble_v1( self.b_change_l2, f"{prefab_abbr} Report, Step 1" )
+                CONSOLE.print(R_OUTPUT)
+                self.i_output = CONSOLE.input("> ").lower()
+                if self.i_output in D_OUTPUT.keys():
+                    self.func_l3_list_hnr_t1()
+                else:
+                    match self.i_output:
+                        case "p" | "previous":
+                            break
+                        case "h" | "help":
+                            self.func_help_v1()
+                        case "q" | "quit":
+                            self._func_quit()
+                        case "":
+                            self.b_change_l2 = True
+                            self.bubble_txt = "No input. Try again."
+                            self.bubble_sty = "bold yellow"
+                        case _:
+                            self.b_change_l2 = True
+                            self.bubble_txt = "Invalid input. Try again."
+                            self.bubble_sty = "bold yellow"
+                self.i_output = ""
+
+
+        
+        def func_l2_input_t2_v1( self ):
+            """
+            Loop for getting input for Task 2: Create SQL Report
+            > Step 1: Select Output type.
+            > Step 2: Write SQL command. 
+
+            A Level 2 command for nested loop handling.
+            """
+            self.b_change_l2 = False
+            while True:
+                self.b_change_l2 = self._func_msg_bubble_v1( self.b_change_l2, "SQL Report 1/2: Select your output type." )
+                CONSOLE.print( R_OUTPUT )
+                self.i_output = CONSOLE.input("> ").lower()
+                if self.i_output in D_OUTPUT.keys():
+                    ### DEV NOTE:
+                    CONSOLE.print(fcolor("DEV NOTE: Not available yet. Applies to all such options.", "bold red"))
+                else:
+                    match self.i_output:
+                        case "p" | "previous":
+                            break
+                        case "h" | "help":
+                            self.func_help_v1()
+                        case "q" | "quit":
+                            self._func_quit()
+                        case "":
+                            self.b_change_l2 = True
+                            self.bubble_txt = "No input. Try again."
+                            self.bubble_sty = "bold yellow"
+                        case _:
+                            self.b_change_l2 = True
+                            self.bubble_txt = "Invalid input. Try again."
+                            self.bubble_sty = "bold yellow"
+
+
+        
+        def func_l3_list_hnr_t1_OLD( self ):
+            """
+            Loop for Step 2 of Task 1: Prefab Reports
+            > Step 1: Select Output type.
+            > Step 2: Select HNR report.
+            > Step 3: Select Input type. 
+            
+            A Level 3 command for nested loop handling.
+            """
+            self.b_change_l3 = False
+            while True:
+                self.b_change_l3 = self._func_msg_bubble_OLD( self.b_change_l3, f"{prefab_abbr} Report, Step 2 | Output: {D_OUTPUT[self.i_output]}" )
+                CONSOLE.print( R_PFR )
+                self.i_pfr = CONSOLE.input("> ").lower()
+                match self.i_pfr:
+                    case "1":
+                        self.func_l4_input_t1_OLD()
+                    case "2":
+                        self.func_l4_t1c2_view_store_products()
+                        ### DEV NOTE: Dead end right now.
+                        self.msg.update({
+                            "bot": f"DEV NOTE | {D_OUTPUT[self.i_output]}: Under construction. Try [1].",
+                            "bot_color": "orange1", "border_color": "orange1"
+                            })
+                    case "3":
+                        self.func_l4_t1c3_view_transactions()
+                        ### DEV NOTE: Dead end right now.
+                        self.msg.update({
+                            "bot": f"DEV NOTE | {D_OUTPUT[self.i_output]}: Under construction. Try [1].",
+                            "bot_color": "orange1", "border_color": "orange1"
+                            })
+                    case "p" | "previous":
+                        break
+                    case "h" | "help":
+                        self.func_help_OLD()
+                    case "q" | "quit":
+                        self._func_quit()
+                    case "":
+                        self.b_change_l3 = True
+                        self.bubble_txt = "No input. Try again."
+                        self.bubble_sty = "bold yellow"
+                    case _:
+                        self.b_change_l3 = True
+                        self.bubble_txt = "Invalid input. Try again."
+                        self.bubble_sty = "bold yellow"
+                self.i_pfr = ""
+
+        
+        def func_l4_input_t1_OLD( self ):
+            """
+            Loop for Step 3 of Task 1: Prefab Reports
+            > Step 1: Select Output type.
+            > Step 2: Select HNR report.
+            > Step 3: Select Input type. 
+            
+            A Level 4 command for nested loop handling.
+            """
+            self.b_change_l4 = False
+            while True:
+                self.b_change_l4 = self._func_msg_bubble_OLD( self.b_change_l4, 
+                    f"{prefab_abbr} Report, Step 3 | Output: {D_OUTPUT[self.i_output]}; Report: {D_PFR[self.i_pfr]}"
+                )
+                CONSOLE.print( R_INPUT )
+                self.i_input = CONSOLE.input("> ").lower()
+                if self.i_input in D_INPUT:
+                    ### DEV NOTE: This is when the processing starts.
+                    CONSOLE.print(fcolor("DEV NOTE: Under construction. Applies to all such options.", "bold red"))
+                else:
+                    match self.i_input:
+                        case "p" | "previous":
+                            break
+                        case "h" | "help":
+                            self.func_help_OLD()
+                        case "q" | "quit":
+                            self._func_quit()
+                        case "":
+                            self.b_change_l4 = True
+                            self.bubble_txt = "No input. Try again."
+                            self.bubble_sty = "bold yellow"
+                        case _:
+                            self.b_change_l4 = True
+                            self.bubble_txt = "Invalid input. Try again."
+                            self.bubble_sty = "bold yellow"
+'''
+
+
+
+
+'''from rich import print
 from rich.panel import Panel
 from rich.text import Text
 panel = Panel(Text("Hello", justify="right"), width=100)
@@ -41,7 +302,7 @@ import time
 from rich.progress import track
 for i in track(range(20), description="Processing..."):
     time.sleep(1)  # Simulate work being done
-
+'''
 
 '''import os, pandas as pd
 from time import time
