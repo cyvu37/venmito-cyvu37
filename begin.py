@@ -28,7 +28,6 @@ from platform import system
 from subprocess import call, Popen
 from importlib.metadata import distributions
 from json import load as json_load
-from pickle import load as pickle_load, dump as pickle_dump
 from datetime import datetime
 from time import sleep
 from webbrowser import open_new_tab
@@ -46,7 +45,7 @@ def mid( input: str, has_color: bool = False ):
     l = len(re.sub( r"\[.*?\]", "", input )) if has_color else len(input)
     spaces = " "*(( WIDTH-l )//2)
     return spaces + input + spaces
-def fcolor( message: str, color: str ):
+def pc( message: str, color: str ):
     """For `rich` printing: Surround a `message` in `color`."""
     return f"[{color}]{message}[/{color}]"
 CD = "bright_cyan"
@@ -56,22 +55,19 @@ CH = "bright_yellow"
 CC = "gold1"
 """For `rich` printing: Default color for action column."""
 LINE = WIDTH * "-"
-R_LINE = fcolor( LINE, CD )
+R_LINE = pc( LINE, CD )
 """For `rich` printing."""
 HEADER = mid( f"< < <   {TITLE.upper()}   > > >", False )
-R_HEADER = mid( f"< < <   {fcolor(TITLE.upper(), CD)}   > > >", True )
+R_HEADER = mid( f"< < <   {pc(TITLE.upper(), CD)}   > > >", True )
 """For `rich` printing."""
 QUIT = f"* Quitting app...\n\n{HEADER}\n{BORDER}\n"
-R_QUIT = fcolor( f"* Quitting app...\n\n\n{R_HEADER}\n{BORDER}\n", "blue1" )
+R_QUIT = pc( f"* Quitting app...\n\n\n{R_HEADER}\n{BORDER}\n", "blue1" )
 """For `rich` printing."""
-R_YN = f"[{CD}]([/{CD}][green]y[/green][{CD}]/[/{CD}][red]n[/red][{CD}])[/{CD}]"
-"""For `rich` printing: Default `(yes/no)` prompt."""
-R_ENTER = fcolor( f"{BORDER}\n{R_HEADER}", "green1" )
+R_ENTER = pc( f"{BORDER}\n{R_HEADER}", "green1" )
 """For `rich` printing."""
 
 
 # Set directories.
-EXE_GLOBAL = f"{sys.executable}"
 DIR_PROGRAM = os.getcwd()
 DIR_DATA = os.path.join( DIR_PROGRAM, "data" )
 DIR_PARENT = os.sep.join( DIR_PROGRAM.split(os.sep)[:-1] )
@@ -94,12 +90,15 @@ FILES_DATA = [
     "promotions.csv",
     "transactions.xml"
 ]
+# Set command(s) based on OS.
+dict_od = { "Windows": "explorer", "Darwin": "open" }
+OPENER = dict_od[system()] if system() in dict_od else "xdg-open"
+"""Command to open a file or directory."""
 
 
 # Package check: Offline check.
-cutoff_symbols = ["==", "["]
 with open(FILE_REQ, "r") as r:
-    req_pkgs = [ i.split( next(( s for s in cutoff_symbols if s in i ), None) )[0].lower() for i in r.readlines() ]
+    req_pkgs = [line.strip().lower().split("[")[0] for line in r.readlines()]
 curr_pkgs = [ "-".join( dist.metadata["Name"].lower().split("_") ) for dist in distributions() ]
 miss_pkgs = [ x for x in req_pkgs if x not in curr_pkgs ]
 
@@ -108,8 +107,8 @@ miss_pkgs = [ x for x in req_pkgs if x not in curr_pkgs ]
 if len(miss_pkgs) > 0:
     # Attempt online download.
     print("* WARNING | There are missing packages.\n* Attempting online download...\n")
-    call( f"{EXE_GLOBAL} -m pip install -U pip", shell=True )
-    call( f"{EXE_GLOBAL} -m pip install -r \"{FILE_REQ}\"", shell=True )
+    call( f"{sys.executable} -m pip install -U pip", shell=True )
+    call( f"{sys.executable} -m pip install -r \"{FILE_REQ}\"", shell=True )
     # Check again.
     curr_pkgs = [ "-".join( dist.metadata["Name"].lower().split("_") ) for dist in distributions() ]
     miss_pkgs = [ x for x in req_pkgs if x not in curr_pkgs ]
@@ -120,12 +119,13 @@ if len(miss_pkgs) > 0:
 
 
 # Import `rich` features.
-# > Console formatting.
+# > Console print formatting.
 from rich.theme import Theme
 from rich.console import Console
 CONSOLE = Console( record=True, log_time=True, 
                    theme=Theme({"repr.background": "black"}) )
 from rich.text import Text
+from rich.prompt import IntPrompt, Prompt
 # > Error handling.
 from rich.traceback import install
 install( show_locals=False, console=CONSOLE )
@@ -138,6 +138,7 @@ from rich.table import Table
 from rich.style import Style
 from rich.tree import Tree
 from rich.markdown import Markdown
+
 
 
 # Import other external packages.
@@ -163,19 +164,7 @@ FILES_DATA = [
 ]
 B_DATA_EXISTS = { f : os.path.exists(os.path.join(DIR_DATA, f)) for f in FILES_DATA }
 b_can_add_data_files = any( B_DATA_EXISTS.values() )
-# Get list of devices. FEATURE: Scalable with permanent changes!
-with open( FILE_LISTS, 'rb' ) as f:
-    tmp = pickle_load(f)
-    DEVICES = list(tmp[0])
-
-
-# Set command(s) based on OS.
-dict_od = {
-    "Windows": "explorer", 
-    "Darwin": "open"
-}
-OPENER = dict_od[system()] if system() in dict_od else "xdg-open"
-"""Command to open a file or directory."""
+DEVICES = ['android', 'iphone', 'desktop']
 
 
 # Define function to handle VE errors.
@@ -197,40 +186,62 @@ def FUNC_capture_app_error( message: str = None ):
     # Save the traceback to an HTML file.
     with open( fp_err, "w+", encoding="utf-8" ) as f:
         f.write( CONSOLE.export_html() )
+        ### DEV NOTE: How do I make the background black!?
     
     CONSOLE.print(f"\n\n\n")
     if message:
-        CONSOLE.print( fcolor( "* CUSTOM ERROR", "bold red" ) + " | " + fcolor( message, CD ) )
+        CONSOLE.print( pc( "* CUSTOM ERROR", "bold red" ) + " | " + pc( message, CD ) )
     # Handle error file and exit.
-    err_exit = fcolor( Text(fp_err, style=Style(link=fp_err)), "gold1" ) + f"\n{R_QUIT}"
+    err_exit = pc( Text(fp_err, style=Style(link=fp_err)), "gold1" ) + f"\n{R_QUIT}"
     if os.path.exists(fp_err):
-        CONSOLE.print( fcolor( "* Above traceback saved to file ", CD ) + err_exit )
+        CONSOLE.print( pc( "* Above traceback saved to file ", CD ) + err_exit )
         Popen( [OPENER, fp_err] ) 
         sleep(1)
     else:
-        CONSOLE.print( fcolor( "* Error saving traceback to file ", "bold red" ) + err_exit )
+        CONSOLE.print( pc( "* Error saving traceback to file ", "bold red" ) + err_exit )
     sys.exit()
 
 
 # Setup formatting objects with `rich`.
 # > Function for common tables.
-def FUNC_make_cmd_table( t: str, columns: dict[str, str], rows: dict[str, str] | list[dict[str, str]], bc: str ) -> Table:
+def FUNC_table_data( t: str, columns: dict[str, str], content: pd.DataFrame, bc: str ) -> Table:
     """Generic function to make a multi-section Table.
 
     Args:
         t (str): Table title
         columns (dict[str, str]): The column names and respective colors.
-        rows (dict[str, str] | list[dict[str, str]]): Each dict entry is a row. If `list`, then each dict is a section.
+        dictionary (dict): Each dict entry is a row. If `list`, then each dict is a section.
         bc (str): Border and title color.
 
     Returns:
         Table: The table to print on the CMD.
     """    
-    table = Table( title=Text( t, justify="center", style=bc ), border_style=bc )
+    table = Table( title=Text( t, justify="center", style=Style( color=bc, bold=True ) ), border_style=bc, show_lines=True )
     for k, v in columns.items():
         table.add_column( k, style=v, header_style=v )
-    if len(rows) == 1:
-        for k, v in rows[0].items():
+    for i in range( content.shape[0] ):
+        table.add_row( *content.iloc[i].astype(str).to_list() )
+    return table
+
+
+# > Function for common tables.
+def FUNC_table_system( t: str, columns: dict[str, str], rows: dict | list[dict], bc: str ) -> Table:
+    """Function to make an action table.
+
+    Args:
+        t (str): Table title
+        columns (dict[str, str]): The column names and respective colors.
+        rows (dict | list[dict]): Each dict entry is a row. If `list`, then each dict is a section.
+        bc (str): Border and title color.
+
+    Returns:
+        Table: The table to print on the CMD.
+    """    
+    table = Table( title=Text( t, justify="center", style=Style( color=bc, bold=True ) ), border_style=bc )
+    for k, v in columns.items():
+        table.add_column( k, style=v, header_style=v )
+    if type(rows) == dict:
+        for k, v in rows.items():
             table.add_row( k, v )
     else:
         for sec in rows:
@@ -244,61 +255,135 @@ D_HQ = {
     "h / help": "Open Help Menu",
     "q / quit": f"Quit {TITLE}"
 }
+"""Help + Quit"""
 D_PQ = {
     "p / previous": "Return to Previous Menu",
     "q / quit": f"Quit {TITLE}"
 }
+"""Previous + Quit"""
 D_PHQ = {
     "p / previous": "Return to Previous Menu",
     "h / help": "Open Help Menu",
     "q / quit": f"Quit {TITLE}"
 }
+"""Previous + Help + Quit"""
 
 # > TABLE: The main menu.
-prefab_name = "Hot-N-Ready Report" # Must be singular.
-prefab_abbr = "HNR" # Use: f"{prefab_abbr} Report"
-D_MENU = {
+prefab_name = "Hot-N-Ready View"
+"""A more exciting name for "prefab views". Must be singular."""
+#prefab_abbr = "HNR"
+"""A more exciting abbreviation for "prefab views". Used as `f"{prefab_abbr} View"`."""
+K_MENU = {
     "1": f"{prefab_name}s",
     "2": "Create SQL Report",
     "3": "Create DeepSeek Prompt"
 }
-R_MENU = FUNC_make_cmd_table(
-    "MAIN MENU", { "Enter": CC, "Task": "bright_cyan" }, [ D_MENU, D_HQ ], CD
-)
+"""Dictionary for main menu selection."""
+R_MENU = FUNC_table_system( "MAIN MENU", { "Enter": CC, "Task": "bright_cyan" }, [K_MENU, D_HQ], CD )
+"""Printed table for main menu selection."""
 
 # > TABLE: Select Output
-D_OUTPUT = {
-    "1": "Table Preview",
-    "2": "Table Export (CSV)",
-    "3": "Summary Preview",
-    "4": "Summary Export",
-    "5": "Graph Export"
+D_OUTPUT_EXPORT = {
+    "1": "Export Table: CSV",
+    "2": "Export Density Graph"
 }
-R_OUTPUT = FUNC_make_cmd_table(
-    "OUTPUT MENU", { "Enter": CC, "Output Type": "bright_cyan" }, [ D_OUTPUT, D_PHQ ], CD
-)
+D_OUTPUT_PREVIEW = {
+    "3": "Print 1st N Entries",
+    "4": "Print Density Statistics"
+}
+K_OUTPUT = ChainMap( D_OUTPUT_EXPORT, D_OUTPUT_PREVIEW )
+"""Dictionary for output selection."""
+R_OUTPUT = FUNC_table_system( "OUTPUT MENU", { "Enter": CC, "Output Type": "bright_cyan" }, [*K_OUTPUT.maps, D_PHQ], CD )
+"""Printed table for output selection."""
 
 # > TABLE: Task 1, Step 1 - Prefab Reports
-D_PFR = {
-    "1": "Single Table Output",
-    "2": "View of Store Products",
-    "3": "View of Transactions"
+PFR_QUERIES = {
+    "view_promotions_metadata": """
+        SELECT
+            pr.promotion_date,
+            pe.first_name || ' ' || pe.last_name AS customer_name,
+            pd.name AS product_name,
+            pr.has_responded
+        FROM promotions AS pr
+        LEFT JOIN products AS pd ON pr.product_id = pd.id
+        LEFT JOIN people AS pe ON pr.customer_id = pe.id
+        """,
+
+    "view_store_products": """
+        SELECT 
+            st.name AS store_name,
+            pd.name AS product_name,
+            SUM(tp.quantity) AS total_sold
+        FROM transaction_products AS tp
+        LEFT JOIN transaction_ids AS ti ON tp.transaction_id = ti.id
+        LEFT JOIN products AS pd ON tp.product_id = pd.id
+        LEFT JOIN stores AS st ON ti.store_id = st.id
+        GROUP BY st.name, pd.name
+        ORDER BY st.name, pd.name;
+        """,
+
+    "view_transactions_metadata": """
+        SELECT
+            ti.id AS transaction_id,
+            ti.date, 
+            st.name AS store_name, 
+            pe.first_name || ' ' || pe.last_name AS customer_name,
+            SUM(tp.price) AS price_sum
+        FROM transaction_products AS tp 
+        LEFT JOIN transaction_ids AS ti ON ti.id = tp.transaction_id
+        LEFT JOIN people AS pe ON ti.customer_id = pe.id
+        LEFT JOIN stores AS st ON ti.store_id = st.id
+        GROUP BY ti.id, ti.date, st.name, customer_name
+        ORDER BY ti.id;
+        """,
+
+    "view_transactions_full": """
+        SELECT
+            tp.transaction_id AS id, 
+            ti.date, 
+            st.name AS store_name, 
+            pe.first_name || ' ' || pe.last_name AS customer_name, 
+            pr.name AS product_name, 
+            tp.price, 
+            tp.price_per_item, 
+            tp.quantity
+        FROM transaction_products AS tp 
+        LEFT JOIN transaction_ids AS ti ON ti.id = tp.transaction_id 
+        LEFT JOIN people AS pe ON pe.id = ti.customer_id 
+        LEFT JOIN stores AS st ON st.id = ti.store_id 
+        LEFT JOIN products AS pr ON pr.id = tp.product_id
+        ORDER BY tp.transaction_id, st.name, pr.name;
+        """,
+
+    "view_transfers_metadata": """
+        SELECT 
+            tr.date, 
+            tr.amount, 
+            sender.first_name || ' ' || sender.last_name AS sender_name, 
+            recipient.first_name || ' ' || recipient.last_name AS recipient_name 
+        FROM transfers AS tr, people AS sender, people AS recipient
+        WHERE tr.sender_id = sender.id
+        AND tr.recipient_id = recipient.id
+        ORDER BY tr.date
+        """
 }
-R_PFR = FUNC_make_cmd_table(
-    f"{prefab_name.upper()} MENU", { "Enter": CC, prefab_name: "bright_cyan" }, [ D_PFR, D_PHQ ], CD
-)
+"""The prefab queries."""
+K_PFR = { "1": "Single Table Output" } # Scalable from the top.
+"""Dictionary for prefab report selection."""
+PFR_KEYS = list(PFR_QUERIES.keys())
+"""Key list of prefab report from `PFR_QUERIES`."""
+tmp = len( list(K_PFR.keys()) ) + 1
+PFR_USER = [ str(i) for i in range( tmp, len(PFR_KEYS) + tmp ) ]
+"""Key list of prefab report user selection from `K_PFR`."""
+K_PFR.update({ i : " ".join(k.split("_")).title()
+               for i, k in zip( PFR_USER, PFR_KEYS ) })
+R_PFR = FUNC_table_system( f"{prefab_name.upper()} MENU", { "Enter": CC, prefab_name: "bright_cyan" }, [K_PFR, D_PHQ], CD )
+"""Printed table for prefab report selection."""
 
 # > Input: Select Database Tables
-D_INPUT = {
-    "1": "People",
-    "2": "Transfers",
-    "3": "Promotions",
-    "4": "Transaction IDs",
-    "5": "Transaction Products"
-}
-R_INPUT = FUNC_make_cmd_table(
-    "INPUT MENU", { "Enter": CC, "Database Table": "bright_cyan" }, [ D_INPUT, D_PHQ ], CD
-)
+K_INPUT: dict[str, str]
+"""Dictionary for table selection."""
+R_INPUT: Table
 
 # > Help Desk
 D_HD_LEARN = {
@@ -307,14 +392,14 @@ D_HD_LEARN = {
     "3": "Print Current File Directory"
 }
 D_HD_ACTION = {
-    "4": "Open README.md",
-    "5": Text( "Open Browser to GitHub Repository (& Return to Previous Menu)", 
+    "4": Text( "Open README.md. Fallback: [5]" ),
+    "5": Text( "Open Browser to GitHub Repo. Fallback: [4]", 
                style=Style( link="https://github.com/cyvu37/venmito-cyvu37" ) )
 }
-C_HELP_DESK = ChainMap( D_HD_LEARN, D_HD_ACTION )
-R_HELP_DESK = FUNC_make_cmd_table(
-    "HELP DESK", { "Enter": CC, "Action": "bright_cyan" }, [ *C_HELP_DESK.maps, D_PQ ], CH
-)
+K_HELP_DESK = ChainMap( D_HD_LEARN, D_HD_ACTION )
+"""Dictionary for help selection."""
+R_HELP_DESK = FUNC_table_system( "HELP DESK", { "Enter": CC, "Action": "bright_cyan" }, [*K_HELP_DESK.maps, D_PQ], CH )
+"""Printed table for help selection."""
 
 # > Help 1: Program Directory Tree
 #R_VE_TREE = 
@@ -340,7 +425,8 @@ try:
         def __init__( self, engine: sqlalchemy.engine.Engine, conn: sqlalchemy.PoolProxiedConnection, if_exists: str ):
             
             with Progress() as progress:
-                n_p = len([v for v in B_DATA_EXISTS.values() if v]) + 4
+                n_p = len([v for v in B_DATA_EXISTS.values() if v]) + 3
+                task = progress.add_task( f"[{CD}]* Importing data...", total=n_p )
                 tmp1 = {}; tmp2 = {}
                 DATA_PEOPLE = None
                 DJ = None
@@ -348,9 +434,8 @@ try:
                 TRANSFERS = None
                 PROMOTIONS = None
                 TRANS_PRODUCTS = None
-                task = progress.add_task( f"[{CD}]* Importing data...", total=n_p )
                 
-                # PEOPLE: Process files.
+                # PEOPLE: Process JSON file.
                 if B_DATA_EXISTS["people.json"]:
                     DJ = {}
                     # Process data.
@@ -360,9 +445,10 @@ try:
                         tmp1[ int(person["id"]) ] = self._func_process_people_json( person )
                     # Handle database.
                     DJ = pd.DataFrame.from_dict( tmp1, orient='index' )
-                    DJ["id"] = DJ["id"].astype(int)
+                    DJ = DJ.astype({"id":int})
                     progress.update( task, advance=1 )
                 
+                # PEOPLE: Process YAML file.
                 if B_DATA_EXISTS["people.yml"]:
                     DY = {}
                     # Process data.
@@ -372,7 +458,7 @@ try:
                         tmp2[ int(person["id"]) ] = self._func_process_people_yml( person )
                     # Handle database.
                     DY = pd.DataFrame.from_dict( tmp2, orient='index' )
-                    DY["id"] = DY["id"].astype(int)
+                    DY = DY.astype({"id":int})
                     progress.update( task, advance=1 )
                 
                 '''# DEV NOTE: This is for handling loss of files.
@@ -388,13 +474,13 @@ try:
                     # - `lookup_phone`: `SELECT id, phone FROM people`
                     pass'''
                 
-                # TRANSFERS: Process file.
+                # TRANSFERS: Process CSV file.
                 if B_DATA_EXISTS["transfers.csv"]:
                     TRANSFERS = pd.read_csv( os.path.join( DIR_DATA, "transfers.csv" ) )
                     TRANSFERS.columns = [ h.lower() for h in TRANSFERS.columns ]
                     progress.update( task, advance=1 )
                 
-                # PROMOTIONS: Process file.
+                # PROMOTIONS: Process CSV file.
                 if B_DATA_EXISTS["promotions.csv"]:
                     PROMOTIONS = pd.read_csv( os.path.join( DIR_DATA, "promotions.csv" ) )
                     PROMOTIONS.columns = [ h.lower() for h in PROMOTIONS.columns ]
@@ -403,17 +489,19 @@ try:
                         PROMOTIONS = PROMOTIONS.drop( columns=["responded"] )
                     progress.update( task, advance=1 )
                 
-                # TRANSACTIONS: Split into UNIQUE and PRODUCTS.
+                # TRANSACTIONS: Split into IDS and PRODUCTS.
                 if B_DATA_EXISTS["transactions.xml"]:
                     # Create `transaction_ids`
                     with open( os.path.join( DIR_DATA, "transactions.xml" ), 'rb' ) as f:
                         TRANS_IDS = pd.read_xml(f)
                     TRANS_IDS = TRANS_IDS.drop( columns=["items"] )
+                    if "dob" in TRANS_IDS.columns:
+                        TRANS_IDS["dob"] = [ datetime.strftime( parse(v), "%Y-%m-%d" ) for v in TRANS_IDS["dob"] ]
                     # Create `transaction_products`
                     with open( os.path.join( DIR_DATA, "transactions.xml" ), 'rb' ) as f:
                         TRANS_PRODUCTS = xmltodict.parse(f)["transactions"]["transaction"]
+                    
                     TRANS_PRODUCTS = self._func_process_transactions_xml( TRANS_PRODUCTS )
-                    TRANS_PRODUCTS["transaction_id"] = TRANS_PRODUCTS["transaction_id"].astype(int)
                     progress.update( task, advance=1 )
                 
                 # Filter and organzie. DEV NOTE: Assume all files exist for now.
@@ -431,7 +519,8 @@ try:
                     PRODUCTS = pd.DataFrame( list(set(tmp1) | set(tmp2)), columns=["name"] )
 
                     # Make table for stores.
-                    STORES = pd.DataFrame( TRANS_IDS["store"].drop_duplicates().values, columns=["name"] )
+                    tmp1 = TRANS_IDS["store"].drop_duplicates().values
+                    STORES = pd.DataFrame( tmp1, columns=["name"], index=range(1, len(tmp1)+1) )
 
                     # Create dictionaries for replacements.
                     lookup_products = {v:k for k, v in PRODUCTS.to_dict()["name"].items()}
@@ -473,59 +562,29 @@ try:
                 
                     # Update all tables in database.
                     cur = conn.cursor()
-                    cur.execute("ALTER TABLE people " + 
-                                "ADD CONSTRAINT unique_person PRIMARY KEY (id)")
-                    cur.execute("ALTER TABLE transfers " + 
-                                "ADD FOREIGN KEY (sender_id) REFERENCES people(id), " + 
-                                "ADD FOREIGN KEY (recipient_id) REFERENCES people(id)")
-                    cur.execute("ALTER TABLE products " + 
-                                "ADD CONSTRAINT unique_product PRIMARY KEY (id)")
-                    cur.execute("ALTER TABLE stores " + 
-                                "ADD CONSTRAINT unique_store PRIMARY KEY (id)")
-                    cur.execute("ALTER TABLE promotions " + 
-                                "ADD CONSTRAINT unique_promotion PRIMARY KEY (id), " + 
-                                "ADD FOREIGN KEY (customer_id) REFERENCES people(id), " + 
-                                "ADD FOREIGN KEY (product_id) REFERENCES products(id)")
-                    cur.execute("ALTER TABLE transaction_ids " + 
-                                "ADD CONSTRAINT unique_transaction PRIMARY KEY (id), " + 
-                                "ADD FOREIGN KEY (customer_id) REFERENCES people(id)")
-                    cur.execute("ALTER TABLE transaction_products " + 
-                                "ADD FOREIGN KEY (transaction_id) REFERENCES transaction_ids(id), " + 
-                                "ADD FOREIGN KEY (product_id) REFERENCES products(id)")
+                    cur.execute( """
+                        ALTER TABLE people
+                            ADD CONSTRAINT unique_person PRIMARY KEY (id);
+                        ALTER TABLE transfers 
+                            ADD FOREIGN KEY (sender_id) REFERENCES people(id),
+                            ADD FOREIGN KEY (recipient_id) REFERENCES people(id);
+                        ALTER TABLE products 
+                            ADD CONSTRAINT unique_product PRIMARY KEY (id);
+                        ALTER TABLE stores 
+                            ADD CONSTRAINT unique_store PRIMARY KEY (id);
+                        ALTER TABLE promotions 
+                            ADD CONSTRAINT unique_promotion PRIMARY KEY (id), 
+                            ADD FOREIGN KEY (customer_id) REFERENCES people(id), 
+                            ADD FOREIGN KEY (product_id) REFERENCES products(id);
+                        ALTER TABLE transaction_ids 
+                            ADD CONSTRAINT unique_transaction PRIMARY KEY (id), 
+                            ADD FOREIGN KEY (customer_id) REFERENCES people(id);
+                        ALTER TABLE transaction_products 
+                            ADD FOREIGN KEY (transaction_id) REFERENCES transaction_ids(id), 
+                            ADD FOREIGN KEY (product_id) REFERENCES products(id);
+                    """ )
                     cur.execute("ALTER TABLE people ALTER COLUMN dob TYPE DATE USING dob::date")
                     cur.execute("ALTER TABLE promotions ALTER COLUMN promotion_date TYPE DATE USING promotion_date::date")
-                    conn.commit()
-                    cur.close()
-                    progress.update( task, advance=1 )
-                    
-                    cur = conn.cursor()
-                    cur.execute( """
-                                CREATE OR REPLACE VIEW view_transaction_info AS 
-                                    SELECT t1.id, t1.date, t2.first_name, t2.last_name, t3.name "store"
-                                    FROM transaction_ids as t1 
-                                    LEFT JOIN people as t2 ON t1.customer_id = t2.id
-                                    LEFT JOIN stores as t3 ON t1.store_id = t3.id
-                                """ ) # DEV NOTE: Merge first and last names.
-                    cur.execute( """
-                                CREATE OR REPLACE VIEW view_transaction_full AS 
-                                    SELECT t1.transaction_id, t2.date, t4.name "store", t3.first_name, t3.last_name, t5.name "product", t1.price, t1.price_per_item, t1.quantity
-                                    FROM transaction_products as t1 
-                                    LEFT JOIN transaction_ids as t2 on t1.transaction_id = t2.id  
-                                    LEFT JOIN people as t3 ON t2.customer_id = t3.id 
-                                    LEFT JOIN stores as t4 ON t2.store_id = t4.id 
-                                    LEFT JOIN products as t5 ON t1.product_id = t5.id
-                                    ORDER BY transaction_id, store, product
-                                """ )
-                    cur.execute( """
-                                CREATE OR REPLACE VIEW view_store_products AS 
-                                    SELECT DISTINCT t4.name "store", t3.name "product" 
-                                    FROM transaction_products as t1
-                                    LEFT JOIN transaction_ids as t2 on t1.transaction_id = t2.id
-                                    LEFT JOIN products as t3 on t1.product_id = t3.id
-                                    LEFT JOIN stores as t4 on t2.store_id = t4.id
-                                    ORDER BY store, product
-                                """ ) # DEV NOTE: Test and edit.
-                    # DEV NOTE: If working, then create trigger function to auto-update.
                     conn.commit()
                     cur.close()
                     progress.update( task, advance=1 )
@@ -547,33 +606,16 @@ try:
                         output["phone"] = v
                     case "dob":
                         try:
-                            output["dob"] = datetime.strftime( parse(v), "%Y-%m-%d" )
+                            output[k] = datetime.strftime( parse(v), "%Y-%m-%d" )
                         except:
-                            output["dob"] = v
+                            output[k] = v
                     case "devices":
                         # Get `"devices": [...]`.
                         output["has_android"] = "Android" in v
                         output["has_iphone"] = "Iphone" in v
                         output["has_desktop"] = "Desktop" in v
-                        
-                        """# TO DO: This is a draft for a loop to keep track of new devices.
-                        for device in v:
-                            device = device.lower()
-                            # The device in the list exists.
-                            output[f'has_{device}'] = True
-                            # Add any new device.
-                            if device not in self.devices:
-                                self.b_new_devices = True
-                                self.devices.append(device)
-                        # Any devices from default list `self.devices` not in `v` don't exist.
-                        for device in self.devices:
-                            if device not in v:
-                                output[f'has_{device}'] = False"""
                     case _:
-                        output[k.lower()] = v
-            '''if self.b_new_devices:
-                # TO DO: Open `FILE_LISTS` and update `self.devices` list.
-                self.b_new_devices = False'''
+                        output[k] = v
             return output
 
 
@@ -600,11 +642,7 @@ try:
                             output["dob"] = datetime.strftime( parse(v), "%Y-%m-%d" )
                         except:
                             output["dob"] = v
-                    case "android":
-                        output[f"has_{k}"] = bool(v)
-                    case "iphone":
-                        output[f"has_{k}"] = bool(v)
-                    case "desktop":
+                    case _ if k in DEVICES:
                         output[f"has_{k}"] = bool(v)
                     case _:
                         output[k] = v
@@ -625,7 +663,7 @@ try:
             return output
 
         
-        def _func_process_item( self, item_info: dict, id ) -> dict:
+        def _func_process_item( self, item_info: dict, id: int ) -> dict:
             """
             Function to process each nested item of a transaction in `transactions.xml` for `transactions_products`.
             
@@ -654,9 +692,9 @@ try:
             for transaction in DT:
                 items = transaction["items"]["item"]
                 if isinstance(items, dict):
-                    res.append( self._func_process_item( items, transaction["@id"] ) )
+                    res.append( self._func_process_item( items, int(transaction["@id"]) ) )
                 elif isinstance(items, list):
-                    res.extend( [ self._func_process_item( item, transaction["@id"] ) for item in items ] )
+                    res.extend( [ self._func_process_item( item, int(transaction["@id"]) ) for item in items ] )
             return pd.DataFrame( res )
             
 
@@ -679,7 +717,7 @@ try:
             "top": f"{T} Menu Lvl 1",
             "top_color": CD,
             "mid": "What would you like to do?",
-            "mid_color": CD,
+            "mid_color": "bright_white",
             "bot": f"{T} Status",
             "bot_color": CD,
             "border_color": CD
@@ -696,9 +734,10 @@ try:
         """Current index of PREFAB REPORT selection."""
         i_input = ""
         """Current index of INPUT selection."""
+        n_print = 10
+        """Number of rows to print in preview (default: N=10)."""
 
         def __init__( self ):
-            #CONSOLE.print(f"[orange1]* DEV MODE: Skipping database connection and setup...[/orange1]")
             try:
                 self.engine = sqlalchemy.engine.create_engine( "postgresql+psycopg://postgres:Space!3742@localhost:5432/postgres" )
                 self.conn = self.engine.raw_connection()
@@ -707,15 +746,15 @@ try:
                 FUNC_capture_app_error("Can't connect to database.")
 
             # Check if tables exist.
-            b_first_time = CONSOLE.input(f"[{CD}]* Would you like to start from scratch? {R_YN}\n> [/{CD}]")
+            tmp = pc( "* Would you like to start from scratch? ([green]y[/green]/[red]any[/red])\n: " , CD )
+            b_first_time = CONSOLE.input(tmp)
             if b_first_time.lower() == "y":
-                CONSOLE.print(f"[{CD}]* Starting from scratch...[/{CD}]")
+                CONSOLE.print(pc("* Starting from scratch...", CD))
                 self._func_first_time()
             
             CONSOLE.print(
-                fcolor("* All prerequisites satisfied!", CD) + "\n" + 
-                fcolor("* Output saved to directory ", CD ) + fcolor(f"\"{DIR_OUTPUT}\"", "gold1") +
-                f"\n\n\n{R_ENTER}"
+                pc("* All prerequisites satisfied!\n* Output saved to directory ", CD) + 
+                pc(f"\"{DIR_OUTPUT}\"", "gold1") + f"\n\n\n{R_ENTER}"
             )
             self.func_l1_menu_loop()
 
@@ -727,12 +766,17 @@ try:
             sys.exit()
 
 
+        def _func_UNDER_CONSTRUCTION( self, option: str ):
+            self.msg.update({ "bot": f"DEV NOTE | {option}: Under construction.",
+                              "bot_color": "purple3", "border_color": "purple3" })
+
+
         def _func_first_time( self ):
             self._func_reset_database()
             if self.b_can_add_data_files:
                 Process_Files( self.engine, self.conn, "replace" )
             else:
-                CONSOLE.print( f"[bold red]* ERROR[/bold red] | [{CD}]No valid files detected in `data` folder. Can't continue.[/{CD}]\n{R_QUIT}" )
+                CONSOLE.print( f"{pc("* ERROR", "bold red")} | {pc("No valid files detected in `data` folder. Can't continue.", CD)}\n{R_QUIT}" )
                 sys.exit()
 
 
@@ -745,7 +789,7 @@ try:
             cur.execute( "DROP TABLE IF EXISTS promotions CASCADE" )
             cur.execute( "DROP TABLE IF EXISTS transaction_ids CASCADE" )
             cur.execute( "DROP TABLE IF EXISTS transaction_products CASCADE" )
-            cur.execute( "DROP VIEW IF EXISTS view_transaction_info CASCADE" )
+            cur.execute( "DROP VIEW IF EXISTS view_transaction_metadata CASCADE" )
             cur.execute( "DROP VIEW IF EXISTS view_transaction_full CASCADE" )
             cur.execute( "DROP VIEW IF EXISTS view_store_products CASCADE" )
             self.conn.commit()
@@ -753,8 +797,13 @@ try:
 
         
         def _func_msg_bubble( self, default_msg: dict ):
+            """The function to print the message bubble.
+
+            Args:
+                default_msg (dict): The message and format to 1) print when no changes are made (`self.b_msg_change = False`), or 2) set after changes are made (`self.b_msg_change = True`).
+            """            
             if not self.b_msg_change:
-                self.msg.update({ "top_color": CD, "mid_color": CD, "bot_color": CD, "border_color": CD })
+                self.msg.update({ "top_color": CD, "mid_color": "bright_white", "bot_color": CD, "border_color": CD })
                 self.msg.update( default_msg )
             # Print message bubble.
             CONSOLE.print("\n")
@@ -766,21 +815,29 @@ try:
             ) )
             CONSOLE.print("\n")
             # Reset default variables.
-            self.b_msg_change = False
+            if self.b_msg_change:
+                self.b_msg_change = False
+                self.msg.update({ "top_color": CD, "mid_color": "bright_white", "bot_color": CD, "border_color": CD })
+                self.msg.update( default_msg )
         
 
         def _func_other_entries( self, inp: str ):
+            """Handle all other input values here.
+
+            Args:
+                inp (str): The input value.
+            """            
             match inp:
                 case "q" | "quit":
                     self._func_quit()
                 case "":
                     self.b_msg_change = True
                     self.msg.update({"bot": "No input. Try again.", 
-                                     "bot_color": "orange1", "border_color": "orange1"})
+                                     "bot_color": "dark_orange", "border_color": "dark_orange"})
                 case _:
                     self.b_msg_change = True
                     self.msg.update({"bot": f"Invalid input: {inp}. Try again.", 
-                                     "bot_color": "orange1", "border_color": "orange1"})
+                                     "bot_color": "dark_orange", "border_color": "dark_orange"})
         
 
         def func_l1_menu_loop( self ):
@@ -794,7 +851,7 @@ try:
                 self._func_msg_bubble( default_msg )
                 # Print menu + get input.
                 CONSOLE.print(R_MENU)
-                self.i_menu = CONSOLE.input("> ").lower()
+                self.i_menu = CONSOLE.input(": ").lower()
                 match self.i_menu:
                     case "1":
                         self.func_l2_t1s1_output()
@@ -803,12 +860,9 @@ try:
                     case "3":
                         ### DEV NOTE: Dead end right now.
                         self.b_msg_change = True
-                        self.msg.update({
-                            "bot": f"DEV NOTE | {D_MENU[self.i_menu]}: Under construction.",
-                            "bot_color": "orange1", "border_color": "orange1"
-                            })
+                        self._func_UNDER_CONSTRUCTION( K_MENU[self.i_menu] )
                     case "h" | "help":
-                        self.func_helpdesk( R_MENU.title, D_MENU )
+                        self.func_helpdesk( R_MENU.title, K_MENU )
                     case _:
                         self._func_other_entries( self.i_menu )
 
@@ -820,7 +874,7 @@ try:
             A Level 1 command for nested loop handling.
             """
             default_msg = {
-                "top": f"{T} Help Lvl 1 | From {menu_title}", "top_color": CH,
+                "top": f"{T} Help Lvl 1 | Prev: {menu_title}", "top_color": CH,
                 "mid": "What would you like to know or do?",
                 "bot": "VE Status", "bot_color": CH, "border_color": CH
             }
@@ -830,22 +884,42 @@ try:
                 self._func_msg_bubble( default_msg )
                 # Print menu + get input.
                 CONSOLE.print(R_HELP_DESK)
-                self.i_help = CONSOLE.input("> ").lower()
+                self.i_help = CONSOLE.input(": ").lower()
                 match self.i_help:
-                    case "1" | "2" | "3" | "4":
+                    case "1":
                         ### DEV NOTE: Dead end right now.
                         self.b_msg_change = True
-                        self.msg.update({
-                            "bot": f"DEV NOTE | {D_MENU[self.i_menu]}: Under construction.",
-                            "bot_color": "orange1", "border_color": "orange1"
-                            })
+                        self._func_UNDER_CONSTRUCTION( K_HELP_DESK[self.i_help] )
+                    case "2":
+                        ### DEV NOTE: Dead end right now.
+                        self.b_msg_change = True
+                        self._func_UNDER_CONSTRUCTION( K_HELP_DESK[self.i_help] )
+                    case "3":
+                        ### DEV NOTE: Dead end right now.
+                        self.b_msg_change = True
+                        self._func_UNDER_CONSTRUCTION( K_HELP_DESK[self.i_help] )
+                    case "4":
+                        self.b_msg_change = True
+                        try:
+                            Popen([OPENER, os.path.join(DIR_PROGRAM, "README.md")])
+                            self.msg.update({"bot": "README.md file opened.", "bot_color": "bright_green"})
+                        except:
+                            try:
+                                open_new_tab( "https://github.com/cyvu37/venmito-cyvu37" )
+                                self.msg.update({"bot": "Couldn't open README.md, but GitHub repo opened in local browser.", "bot_color": "bright_green"})
+                            except:
+                                self.msg.update({"bot": "Couldn't open README.md or GitHub repo.", "bot_color": "dark_orange"})
                     case "5":
                         self.b_msg_change = True
                         try:
                             open_new_tab( "https://github.com/cyvu37/venmito-cyvu37" )
-                            self.msg.update({"bot": "Website opened in local browser.", "bot_color": "bright_green"})
+                            self.msg.update({"bot": "GitHub repo opened in local browser.", "bot_color": "bright_green"})
                         except:
-                            self.msg.update({"bot": "Couldn't open GitHub.", "bot_color": "orange1"})
+                            try:
+                                Popen([OPENER, os.path.join(DIR_PROGRAM, "README.md")])
+                                self.msg.update({"bot": "Couldn't open GitHub repo, but README.md opened.", "bot_color": "bright_green"})
+                            except:
+                                self.msg.update({"bot": "Couldn't open GitHub repo or README.md.", "bot_color": "dark_orange"})
                     case "p" | "previous":
                         break
                     case _:
@@ -862,23 +936,27 @@ try:
             A Level 2 command for nested loop handling.
             """
             default_msg = { 
-                "top": f"{T} Menu Lvl 2 | {D_MENU[self.i_menu]}",
+                "top": f"{T} Menu Lvl 2 | {K_MENU[self.i_menu]}",
                 "mid": "Step 1: Select an output type.",
-                "bot": "Output: N/A, Report: N/A"
+                "bot": "Report: N/A >> Output: N/A"
             }
             self.msg.update( default_msg )
             while True:
                 self._func_msg_bubble( default_msg )
                 CONSOLE.print(R_OUTPUT)
-                self.i_output = CONSOLE.input("> ").lower()
-                if self.i_output in D_OUTPUT.keys():
+                self.i_output = CONSOLE.input(": ").lower()
+                if self.i_output in K_OUTPUT.keys():
+                    self.b_msg_change = True
+                    if K_OUTPUT[self.i_output] == "Print 1st N Entries":
+                        self.n_print = IntPrompt.ask( pc("* Input N, the number of rows to preview. Range: [1, 20]. Default: 10.\n", CD),
+                                                      console=CONSOLE, choices=[str(i) for i in range(1, 21)], show_choices=False )
                     self.func_l3_t1s2_report()
                 else:
                     match self.i_output:
                         case "p" | "previous":
                             break
                         case "h" | "help":
-                            self.func_helpdesk( R_OUTPUT.title, D_OUTPUT )
+                            self.func_helpdesk( R_OUTPUT.title, K_OUTPUT )
                         case _:
                             self._func_other_entries( self.i_output )
 
@@ -892,39 +970,32 @@ try:
             
             A Level 3 command for nested loop handling.
             """
+            txt = K_OUTPUT[self.i_output]
+            if txt == "Print 1st N Entries":
+                txt = str(self.n_print).join(txt.split("N"))
             default_msg = { 
-                "top": f"{T} Menu Lvl 3 | {D_MENU[self.i_menu]}",
+                "top": f"{T} Menu Lvl 3 | {K_MENU[self.i_menu]}",
                 "mid": "Step 2: Select a report type.",
-                "bot": f"Output: {D_OUTPUT[self.i_output]}, Report: N/A"
+                "bot": f"Report: N/A >> Output: {txt}"
             }
             self.msg.update( default_msg )
             while True:
                 self._func_msg_bubble( default_msg )
                 CONSOLE.print(R_PFR)
-                self.i_pfr = CONSOLE.input("> ").lower()
+                self.i_pfr = CONSOLE.input(": ").lower()
                 match self.i_pfr:
                     case "1":
+                        self.b_msg_change = True
                         self.func_l4_t1c1_input()
-                    case "2":
-                        self.func_l4_t1c2_view_store_products()
-                        ### DEV NOTE: Dead end right now.
+                    case _ if self.i_pfr in PFR_USER:
                         self.b_msg_change = True
-                        self.msg.update({
-                            "bot": f"DEV NOTE | {D_PFR[self.i_pfr]}: Under construction. Try [1].",
-                            "bot_color": "orange1", "border_color": "orange1"
-                            })
-                    case "3":
-                        self.func_l4_t1c3_view_transactions()
-                        ### DEV NOTE: Dead end right now.
-                        self.b_msg_change = True
-                        self.msg.update({
-                            "bot": f"DEV NOTE | {D_PFR[self.i_pfr]}: Under construction. Try [1].",
-                            "bot_color": "orange1", "border_color": "orange1"
-                            })
+                        view = PFR_KEYS[ int(self.i_pfr)-2 ]
+                        df = pd.read_sql_query( PFR_QUERIES[view], self.engine, dtype=str )
+                        self._func_export( df, default_msg, K_PFR[self.i_pfr] )
                     case "p" | "previous":
                         break
                     case "h" | "help":
-                        self.func_helpdesk( R_PFR.title, D_PFR )
+                        self.func_helpdesk( R_PFR.title, K_PFR )
                     case _:
                         self._func_other_entries( self.i_pfr )
 
@@ -933,30 +1004,34 @@ try:
             """
             Loop for Step 3 of Task 1: Prefab Reports
             * Step 1: Select Output type.
-            * Step 2: Select single table output.
+            * Step 2: Select Single Table Output.
             > Step 3: Select Input type.
             
             A Level 4 command for nested loop handling.
             """
+            txt = K_OUTPUT[self.i_output]
+            if txt == "Print 1st N Entries":
+                txt = str(self.n_print).join(txt.split("N"))
             default_msg = { 
-                "top": f"{T} Menu Lvl 4 | {D_MENU[self.i_menu]}",
+                "top": f"{T} Menu Lvl 4 | {K_MENU[self.i_menu]}",
                 "mid": "Step 3: Select an input type.",
-                "bot": f"Output: {D_OUTPUT[self.i_output]}, Report: {D_PFR[self.i_pfr]}, Input: N/A"
+                "bot": f"Input: N/A >> Report: {K_PFR[self.i_pfr]} >> Output: {txt}"
             }
             self.msg.update( default_msg )
             while True:
                 self._func_msg_bubble( default_msg )
+                CONSOLE.print( pc("* Fetching table list...", CD), end="\r" )
+                # Access and print list.
+                D_INPUT = pd.read_sql_query( "SELECT table_name FROM information_schema.tables WHERE table_schema='public'", self.engine, dtype=str )
+                D_INPUT = { str(i+1):c for i, c in enumerate(D_INPUT["table_name"]) }
+                R_INPUT = FUNC_table_system( "INPUT MENU", { "Enter": CC, "Database Table": "bright_cyan" }, [D_INPUT, D_PHQ], CD )
                 CONSOLE.print(R_INPUT)
-                self.i_input = CONSOLE.input("> ").lower()
-                print(self.i_input)
-                print(self.i_input in D_INPUT.keys())
+                # Capture input.
+                self.i_input = CONSOLE.input(": ").lower()
                 if self.i_input in D_INPUT.keys():
-                    ### DEV NOTE: Dead end right now.
                     self.b_msg_change = True
-                    self.msg.update({
-                        "bot": f"DEV NOTE | {D_INPUT[self.i_input]}: Under construction.",
-                        "bot_color": "orange1", "border_color": "orange1"
-                        })
+                    df = pd.read_sql_query( f"SELECT * FROM {D_INPUT[self.i_input]}", self.engine, dtype=str )
+                    self._func_export( df, default_msg, D_INPUT[self.i_input] )
                 else:
                     match self.i_input:
                         case "p" | "previous":
@@ -967,34 +1042,79 @@ try:
                             self._func_other_entries( self.i_input )
 
         
-        def func_l4_t1c2_view_store_products( self ):
-            """
-            Prefab Report w/ Output: View of Store Products
-            
-            A Level 4 command for nested loop handling.
-            """
-            pass
+        def _func_export( self, df: pd.DataFrame, default_msg: dict, fname: str ):
+            """Universal function to export the desired output based on OUTPUT MENU: `K_OUTPUT[self.i_output]`
 
-        
-        def func_l4_t1c3_view_transactions( self ):
-            """
-            Prefab Report w/ Output: View Transactions
-            
-            A Level 4 command for nested loop handling.
-            """
-            pass
+            Args:
+                df (pd.DataFrame): DataFrame to handle.
+                default_msg (dict): The default message pack of the parent function.
+                fname (str): The filename or table title.
+            """            
+            if "Density" in K_OUTPUT[self.i_output]:
+                self._func_UNDER_CONSTRUCTION( K_OUTPUT[self.i_output] )
+
+            match self.i_output:    # Check `K_OUTPUT[self.i_output]` = ...
+                case "1":           # "Export Table: CSV"
+                    fpath = os.path.join( DIR_OUTPUT, f"{fname}.csv" )
+                    df.to_csv( fpath )
+                    fsplt = fpath.split(os.sep)
+                    fshrt = fsplt[0] + f"{os.sep}...{os.sep}" + os.sep.join(fsplt[-3:])
+                    self.msg.update({ "bot": f"Exported to {fshrt}", "bot_color": "green1" })
+                    Popen([OPENER, fpath])
+                case "2":           # "Export Density Graph"
+                    fpath = os.path.join( DIR_OUTPUT, f"{fname}.png" )
+                    ###
+                    fsplt = fpath.split(os.sep)
+                    fshrt = fsplt[0] + f"{os.sep}...{os.sep}" + os.sep.join(fsplt[-3:])
+                    #self.msg.update({ "bot": f"Exported to {fshrt}", "bot_color": "green1" })
+                    #Popen([OPENER, fpath])
+                case "3":           # "Print 1st N Entries"
+                    # Get 1st N or less entries.
+                    table = df.head( self.n_print + 1 )
+                    if table.shape[0] <= self.n_print:
+                        num = table.shape[0]
+                    else:
+                        num = self.n_print
+                        table = pd.concat([ table, 
+                                            pd.DataFrame( [[f"[{df.shape[0]-self.n_print} more entries]"]*df.shape[1]], columns=df.columns )
+                                          ], ignore_index=True)
+                    # Print all.
+                    self.msg.update({ 
+                        "top": f"Output View | Preview 1st {num} Entries", "top_color": CD,
+                        "mid": fname, "border_color": "bright_white",
+                        "bot": "Output printed. Press Enter to continue.", "bot_color": "green1"
+                        })
+                    self._func_msg_bubble( default_msg )
+                    CONSOLE.print(FUNC_table_data( 
+                        fname, dict.fromkeys( df.columns, "bright_white" ), table, "bright_white" 
+                        ))
+                    CONSOLE.input( pc("Press Enter to return to previous menu. ", CD) )
+                case "4":           # "Print Density Statistics"
+                    pass
+                    ###
+                    '''self.msg.update({ 
+                        "top": "Output View | Density Statistics", "top_color": CD,
+                        "mid": fname, "border_color": "bright_white",
+                        "bot": "Output printed. Press Enter to continue.", "bot_color": "green1"
+                        })
+                    self._func_msg_bubble( default_msg )
+                    CONSOLE.print(FUNC_table_data( 
+                        fname, dict.fromkeys( df.columns, "bright_white" ), table, "bright_white" 
+                        ))'''
+                    #CONSOLE.input( fcolor("Press Enter to continue. ", CD) )
+            #
 
         
         def func_l2_t2s1_output( self ):
             """
             Loop for getting output for Task 2: Create SQL Report
             > Step 1: Select Output type.
-            > Step 2: Write SQL command. 
+            * Step 2: Write SQL command. 
 
             A Level 2 command for nested loop handling.
             """
             default_msg = {
-                "top": f"{T} Menu Lvl 2 | {D_MENU[self.i_menu]}",
+                "top": f"{T} Menu Lvl 2 | {K_MENU[self.i_menu]}",
                 "mid": "Step 1/2: Select an output type for your SQL report.",
                 "bot": "Output: N/A"
             }
@@ -1002,22 +1122,60 @@ try:
             while True:
                 self._func_msg_bubble( default_msg )
                 CONSOLE.print(R_OUTPUT)
-                self.i_output = CONSOLE.input("> ").lower()
-                if self.i_output in D_OUTPUT.keys():
-                    ### DEV NOTE: Make function to let user write SQL command.
+                self.i_output = CONSOLE.input(": ").lower()
+                if self.i_output in K_OUTPUT.keys():
                     self.b_msg_change = True
-                    self.msg.update({
-                        "bot": f"DEV NOTE | {D_OUTPUT[self.i_output]}: Under construction.",
-                        "bot_color": "orange1", "border_color": "orange1"
-                        })
+                    self.func_l3_sql()
+                    self._func_UNDER_CONSTRUCTION( K_OUTPUT[self.i_output] )
                 else:
                     match self.i_output:
                         case "p" | "previous":
                             break
                         case "h" | "help":
-                            self.func_helpdesk( R_OUTPUT.title, D_OUTPUT )
+                            self.func_helpdesk( R_OUTPUT.title, K_OUTPUT )
                         case _:
                             self._func_other_entries( self.i_output )
+
+        
+        def func_l3_sql( self ):
+            """
+            Loop for getting output for Task 2: Create SQL Report
+            * Step 1: Select Output type.
+            > Step 2: Write SQL command. 
+
+            A Level 3 command for nested loop handling.
+            """
+            default_msg = {
+                "top": f"{T} Menu Lvl 3 | {K_MENU[self.i_menu]}",
+                "mid": "Step 2/2: Write your SQL query in one line. Options 'previous', 'quit' still active.",
+                "bot": f"Output: {K_OUTPUT[self.i_output]}"
+            }
+            self.msg.update( default_msg )
+            b_previous = False
+            while not b_previous:
+                self._func_msg_bubble( default_msg )
+                query = CONSOLE.input("SQL Query: ")
+                match query:
+                    case "p" | "previous":
+                        b_previous = True
+                    case "q" | "quit":
+                        self._func_quit()
+                    case _:
+                        fname = "By SQL Query"
+                        # If exporting, get filename.
+                        if "Export" in K_OUTPUT[self.i_output]:
+                            fname = Prompt.get_input( prompt=pc("* Enter the filename without extension: ", CD),
+                                                      console=CONSOLE )
+                        self.b_msg_change = True
+                        try:
+                            df = pd.read_sql_query( query, self.engine, dtype=str )
+                            self._func_export( df, default_msg, fname )
+                            b_previous = True
+                        except:
+                            self.msg.update({ 
+                                "bot": f"ERROR | Invalid query. Try again. | Output: {K_OUTPUT[self.i_output]}",
+                                "bot_color": "orange1", "border_color": "orange1"
+                                })
 
 
 
