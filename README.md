@@ -1,6 +1,7 @@
 # Venmito Data Engineering Project
 
 **Author**: Jared Hidalgo
+
 **Email**: jaredhidalgo@gmail.com
 
 ## About the Program
@@ -26,7 +27,7 @@ This CLI program sets up the database from scratch and provides a wide variety o
     - Installed pgAdmin 4 and setup basic server.
 1. The Python Script
     - Wrote routine to auto-check required packages on startup.
-    - Wrote functions to 
+    - Wrote functions to run prefabricated SQL queries for views, aka "Hot-N-Ready Views", and to let the user run their own SQL queries.
     - Wrote menu for user options.
 
 ## How To Use The Program
@@ -46,22 +47,22 @@ This CLI program sets up the database from scratch and provides a wide variety o
 ### Running: Prerequisites
 
 The program will first run two sets of prerequisites before entering the Main Menu:
-1. Checking packages
-2. Checking the connection of the database as in the requirements.
+1. Checking packages.
+1. Checking the connection of the database as in the requirements.
 
 ### Running: The Main Menu
 
 This software isn't finished, but the plan is the following:
 - In the Main Menu, the user can...
-    - Manually import new data with `[0] Import New Data`.
-    - Pick options to generate pre-made report scripts with `[1] Report Templates`.
-    - Write their own SQL script and generate a graph from its results with `[2] DIY Report`.
-    - Make an AI prompt with a customized DeepSeek LLM (local or online) with `[3] Create DeepSeek Prompt`.
-    - Start over once they finish a task.
-- [1] Report Templates: For example, the user can select an option to make a frequency graph of bought products from the TRANSACTION_UNIQUE and TRANSACTION_PRODUCTS tables.
-- [2] DIY Report
-    - The user will be prompted for their choice(s) for exporting their desired data.
-    - Then the user can write an SQL command within certain parameters.
+    - Pick options to generate prefab reports with `[1] Hot-N-Ready Views`.
+    - Write their own SQL query with `[2] DIY Report`.
+    - Make an AI prompt for a customized DeepSeek LLM with `[3] Create DeepSeek Prompt`. (Experimental)
+    - Export any results in a selected format from the OUTPUT MENU.
+    - Start over once they successfully finish a task.
+- [1] Hot-N-Ready Views
+    - The user can choose from a selection of pre-written SQL queries. 
+    - For example, the user can select `View Store Products` to view the name and number of products each store has sold.
+- [2] Create SQL Report: The user can enter their own SQL queries and export results.
 - [3] Create DeepSeek Prompt
     - Once the user selects this, the program will connect with our customized (local or online) DeepSeek LLM.
     - Then the user can enter in a prompt for the DeepSeek LLM.

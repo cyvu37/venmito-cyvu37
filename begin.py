@@ -114,7 +114,7 @@ if len(miss_pkgs) > 0:
     miss_pkgs = [ x for x in req_pkgs if x not in curr_pkgs ]
     if len(miss_pkgs) > 0:
         tmp = "package" if len(miss_pkgs) == 1 else "packages"
-        sys.exit( f"\n\n* ERROR | Missing {tmp}: {",".join(miss_pkgs)}\n{QUIT}" )
+        sys.exit( f"\n\n* ERROR! Missing {tmp}: {",".join(miss_pkgs)}\n{QUIT}" )
     print("\n* Packages installed successfully.")
 
 
@@ -185,7 +185,7 @@ def FUNC_capture_app_error( message: str = None ):
     CONSOLE.print_exception( show_locals=True )
     # Save the traceback to an HTML file.
     with open( fp_err, "w+", encoding="utf-8" ) as f:
-        f.write( CONSOLE.export_html() )
+        f.write( CONSOLE.export_html(Theme(Style(bgcolor="#000000"))) )
         ### DEV NOTE: How do I make the background black!?
     
     CONSOLE.print(f"\n\n\n")
@@ -276,7 +276,7 @@ prefab_name = "Hot-N-Ready View"
 K_MENU = {
     "1": f"{prefab_name}s",
     "2": "Create SQL Report",
-    "3": "Create DeepSeek Prompt"
+    "3": "*Create DeepSeek Prompt"
 }
 """Dictionary for main menu selection."""
 R_MENU = FUNC_table_system( "MAIN MENU", { "Enter": CC, "Task": "bright_cyan" }, [K_MENU, D_HQ], CD )
@@ -285,11 +285,11 @@ R_MENU = FUNC_table_system( "MAIN MENU", { "Enter": CC, "Task": "bright_cyan" },
 # > TABLE: Select Output
 D_OUTPUT_EXPORT = {
     "1": "Export Table: CSV",
-    "2": "Export Density Graph"
+    "2": "*Export Density Graph"
 }
 D_OUTPUT_PREVIEW = {
     "3": "Print 1st N Entries",
-    "4": "Print Density Statistics"
+    "4": "*Print Density Statistics"
 }
 K_OUTPUT = ChainMap( D_OUTPUT_EXPORT, D_OUTPUT_PREVIEW )
 """Dictionary for output selection."""
@@ -387,9 +387,9 @@ R_INPUT: Table
 
 # > Help Desk
 D_HD_LEARN = {
-    "1": "About & Features",
-    "2": "Menu Hierarchy & Current Position",
-    "3": "Print Current File Directory"
+    "1": "*About & Features",
+    "2": "*Menu Hierarchy & Current Position",
+    "3": "*Print Current File Directory"
 }
 D_HD_ACTION = {
     "4": Text( "Open README.md. Fallback: [5]" ),
@@ -861,6 +861,9 @@ try:
                         ### DEV NOTE: Dead end right now.
                         self.b_msg_change = True
                         self._func_UNDER_CONSTRUCTION( K_MENU[self.i_menu] )
+                    case "p" | "previous":
+                        self.b_msg_change = True
+                        self.msg.update({"bot": "This is the top level. :)", "bot_color": "dark_orange"})
                     case "h" | "help":
                         self.func_helpdesk( R_MENU.title, K_MENU )
                     case _:
@@ -902,13 +905,15 @@ try:
                         self.b_msg_change = True
                         try:
                             Popen([OPENER, os.path.join(DIR_PROGRAM, "README.md")])
-                            self.msg.update({"bot": "README.md file opened.", "bot_color": "bright_green"})
+                            self.msg.update({"bot": "README.md opened.", "bot_color": "bright_green"})
                         except:
                             try:
                                 open_new_tab( "https://github.com/cyvu37/venmito-cyvu37" )
-                                self.msg.update({"bot": "Couldn't open README.md, but GitHub repo opened in local browser.", "bot_color": "bright_green"})
+                                self.msg.update({
+                                    "bot": "Couldn't open README.md, but GitHub repo opened in local browser.",
+                                    "bot_color": "bright_green"})
                             except:
-                                self.msg.update({"bot": "Couldn't open README.md or GitHub repo.", "bot_color": "dark_orange"})
+                                self.msg.update({"bot": "Couldn't open README.md or GitHub repo. Huh.", "bot_color": "dark_orange"})
                     case "5":
                         self.b_msg_change = True
                         try:
@@ -919,7 +924,7 @@ try:
                                 Popen([OPENER, os.path.join(DIR_PROGRAM, "README.md")])
                                 self.msg.update({"bot": "Couldn't open GitHub repo, but README.md opened.", "bot_color": "bright_green"})
                             except:
-                                self.msg.update({"bot": "Couldn't open GitHub repo or README.md.", "bot_color": "dark_orange"})
+                                self.msg.update({"bot": "Couldn't open GitHub repo or README.md. Huh.", "bot_color": "dark_orange"})
                     case "p" | "previous":
                         break
                     case _:
@@ -1031,7 +1036,7 @@ try:
                 if self.i_input in D_INPUT.keys():
                     self.b_msg_change = True
                     df = pd.read_sql_query( f"SELECT * FROM {D_INPUT[self.i_input]}", self.engine, dtype=str )
-                    self._func_export( df, default_msg, D_INPUT[self.i_input] )
+                    self._func_export( df, default_msg, D_INPUT[self.i_input].title() )
                 else:
                     match self.i_input:
                         case "p" | "previous":
@@ -1058,7 +1063,7 @@ try:
                     fpath = os.path.join( DIR_OUTPUT, f"{fname}.csv" )
                     df.to_csv( fpath )
                     fsplt = fpath.split(os.sep)
-                    fshrt = fsplt[0] + f"{os.sep}...{os.sep}" + os.sep.join(fsplt[-3:])
+                    fshrt = fpath if len(fsplt) < 5 else fsplt[0] + f"{os.sep}...{os.sep}" + os.sep.join(fsplt[-3:])
                     self.msg.update({ "bot": f"Exported to {fshrt}", "bot_color": "green1" })
                     Popen([OPENER, fpath])
                 case "2":           # "Export Density Graph"
@@ -1070,25 +1075,30 @@ try:
                     #Popen([OPENER, fpath])
                 case "3":           # "Print 1st N Entries"
                     # Get 1st N or less entries.
-                    table = df.head( self.n_print + 1 )
-                    if table.shape[0] <= self.n_print:
-                        num = table.shape[0]
-                    else:
+                    res = df.head( self.n_print )
+                    if res.shape[0] == self.n_print and res.shape[0] != df.shape[0]:
                         num = self.n_print
-                        table = pd.concat([ table, 
-                                            pd.DataFrame( [[f"[{df.shape[0]-self.n_print} more entries]"]*df.shape[1]], columns=df.columns )
-                                          ], ignore_index=True)
+                        res = pd.concat([ res, 
+                                        pd.DataFrame( [[f"[{df.shape[0]-self.n_print} more entries]"]*df.shape[1]], columns=df.columns )
+                                        ], ignore_index=True)
+                    else:
+                        num = res.shape[0]
                     # Print all.
                     self.msg.update({ 
                         "top": f"Output View | Preview 1st {num} Entries", "top_color": CD,
                         "mid": fname, "border_color": "bright_white",
-                        "bot": "Output printed. Press Enter to continue.", "bot_color": "green1"
+                        "bot": "Output printed. Press Enter to return to previous menu.", "bot_color": "green1"
                         })
                     self._func_msg_bubble( default_msg )
                     CONSOLE.print(FUNC_table_data( 
-                        fname, dict.fromkeys( df.columns, "bright_white" ), table, "bright_white" 
+                        fname, dict.fromkeys( df.columns, "bright_white" ), res, "bright_white" 
                         ))
-                    CONSOLE.input( pc("Press Enter to return to previous menu. ", CD) )
+                    inp = CONSOLE.input( pc("Press Enter to continue (or q to quit). ", CD) )
+                    match inp:
+                        case "q" | "quit":
+                            self._func_quit()
+                        case _:
+                            pass
                 case "4":           # "Print Density Statistics"
                     pass
                     ###
@@ -1125,8 +1135,10 @@ try:
                 self.i_output = CONSOLE.input(": ").lower()
                 if self.i_output in K_OUTPUT.keys():
                     self.b_msg_change = True
+                    if K_OUTPUT[self.i_output] == "Print 1st N Entries":
+                        self.n_print = IntPrompt.ask( pc("* Input N, the number of rows to preview. Range: [1, 20]. Default: 10.\n", CD),
+                                                      console=CONSOLE, choices=[str(i) for i in range(1, 21)], show_choices=False )
                     self.func_l3_sql()
-                    self._func_UNDER_CONSTRUCTION( K_OUTPUT[self.i_output] )
                 else:
                     match self.i_output:
                         case "p" | "previous":
@@ -1145,35 +1157,32 @@ try:
 
             A Level 3 command for nested loop handling.
             """
+            txt = K_OUTPUT[self.i_output]
+            if txt == "Print 1st N Entries":
+                txt = str(self.n_print).join(txt.split("N"))
             default_msg = {
                 "top": f"{T} Menu Lvl 3 | {K_MENU[self.i_menu]}",
-                "mid": "Step 2/2: Write your SQL query in one line. Options 'previous', 'quit' still active.",
-                "bot": f"Output: {K_OUTPUT[self.i_output]}"
+                "mid": "Step 2/2: Write SQL query in one line, then Enter. 'previous', 'quit' available.",
+                "bot": f"Output: {txt}. 'p', 'q' available."
             }
             self.msg.update( default_msg )
-            b_previous = False
-            while not b_previous:
+            while True:
                 self._func_msg_bubble( default_msg )
                 query = CONSOLE.input("SQL Query: ")
                 match query:
                     case "p" | "previous":
-                        b_previous = True
+                        break
                     case "q" | "quit":
                         self._func_quit()
                     case _:
-                        fname = "By SQL Query"
-                        # If exporting, get filename.
-                        if "Export" in K_OUTPUT[self.i_output]:
-                            fname = Prompt.get_input( prompt=pc("* Enter the filename without extension: ", CD),
-                                                      console=CONSOLE )
+                        fname = f"sql {datetime.strftime( datetime.now(), "%Y %m %d, %H %M %S %f" )}"
                         self.b_msg_change = True
                         try:
                             df = pd.read_sql_query( query, self.engine, dtype=str )
                             self._func_export( df, default_msg, fname )
-                            b_previous = True
                         except:
                             self.msg.update({ 
-                                "bot": f"ERROR | Invalid query. Try again. | Output: {K_OUTPUT[self.i_output]}",
+                                "bot": f"WARNING! Invalid query. Try again. | Output: {txt}",
                                 "bot_color": "orange1", "border_color": "orange1"
                                 })
 
