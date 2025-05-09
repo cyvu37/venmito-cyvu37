@@ -1,11 +1,17 @@
 """
-Always end test script with `exit()`.
+Always end test code with `exit()`.
 """
 
 
 
 
 
+
+"""from platform import system
+dict_od = { "Windows": "explorer", "Darwin": "open" }
+print(system() in dict_od)
+print(system() in dict_od.keys())
+exit()"""
 
 
 '''import contextlib

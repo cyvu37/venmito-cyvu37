@@ -4,5 +4,6 @@ lxml
 xmltodict
 pyyaml
 pandas
+matplotlib
 chime
 rich

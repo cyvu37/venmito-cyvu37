@@ -92,8 +92,10 @@ FILES_DATA = [
 ]
 # Set command(s) based on OS.
 dict_od = { "Windows": "explorer", "Darwin": "open" }
-OPENER = dict_od[system()] if system() in dict_od else "xdg-open"
+OPENER = dict_od[system()] if system() in dict_od.keys() else "xdg-open"
 """Command to open a file or directory."""
+# Other variables.
+GITHUB_URL = "https://github.com/jaredhidalgo/venmito-cyvu37"
 
 
 # Package check: Offline check.
@@ -124,11 +126,29 @@ from rich.theme import Theme
 from rich.console import Console
 CONSOLE = Console( record=True, log_time=True, 
                    theme=Theme({"repr.background": "black"}) )
+CONSOLE_HTML_FORMAT = """\
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+{stylesheet}
+body {{
+    color: #ffffff;
+    background-color: #000000;
+}}
+</style>
+</head>
+<body>
+    <pre style="font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><code style="font-family:inherit">{code}</code></pre>
+</body>
+</html>
+"""
 from rich.text import Text
-from rich.prompt import IntPrompt, Prompt
+from rich.prompt import IntPrompt
 # > Error handling.
 from rich.traceback import install
-install( show_locals=False, console=CONSOLE )
+install( show_locals=True, console=CONSOLE )
 # > Progress bars.
 from rich.progress import Progress
 progress = Progress( console=CONSOLE )
@@ -142,10 +162,19 @@ from rich.markdown import Markdown
 
 
 # Import other external packages.
-import chime, xmltodict, yaml
+import chime, matplotlib, xmltodict, yaml
 import pandas as pd
 import sqlalchemy.engine
 chime.theme( "material" )
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+DPI = 200
+plt.rcParams.update({
+    "font.size": 5,
+    "figure.dpi": DPI,
+    "xtick.labelsize": 4,
+    "ytick.labelsize": 4
+})
 
 
 # Check required files.
@@ -163,7 +192,7 @@ FILES_DATA = [
     "transactions.xml"
 ]
 B_DATA_EXISTS = { f : os.path.exists(os.path.join(DIR_DATA, f)) for f in FILES_DATA }
-b_can_add_data_files = any( B_DATA_EXISTS.values() )
+B_CAN_ADD_DATA_FILES = any( B_DATA_EXISTS.values() )
 DEVICES = ['android', 'iphone', 'desktop']
 
 
@@ -185,7 +214,7 @@ def FUNC_capture_app_error( message: str = None ):
     CONSOLE.print_exception( show_locals=True )
     # Save the traceback to an HTML file.
     with open( fp_err, "w+", encoding="utf-8" ) as f:
-        f.write( CONSOLE.export_html(Theme(Style(bgcolor="#000000"))) )
+        f.write( CONSOLE.export_html( code_format=CONSOLE_HTML_FORMAT ) )
         ### DEV NOTE: How do I make the background black!?
     
     CONSOLE.print(f"\n\n\n")
@@ -380,6 +409,12 @@ K_PFR.update({ i : " ".join(k.split("_")).title()
 R_PFR = FUNC_table_system( f"{prefab_name.upper()} MENU", { "Enter": CC, prefab_name: "bright_cyan" }, [K_PFR, D_PHQ], CD )
 """Printed table for prefab report selection."""
 
+# > TABLE LIST
+R_PFR_LIST = FUNC_table_system( 
+    f"SQL SCRIPTS FOR {prefab_name.upper()}S", { prefab_name: CC, "Script": "bright_cyan" },
+    [{ " ".join(k.split("_")).title() : v } for k, v in PFR_QUERIES.items()], CD
+)
+
 # > Input: Select Database Tables
 K_INPUT: dict[str, str]
 """Dictionary for table selection."""
@@ -389,12 +424,12 @@ R_INPUT: Table
 D_HD_LEARN = {
     "1": "*About & Features",
     "2": "*Menu Hierarchy & Current Position",
-    "3": "*Print Current File Directory"
+    "3": "Print SQL Scripts for Hot-N-Ready Views"
 }
 D_HD_ACTION = {
     "4": Text( "Open README.md. Fallback: [5]" ),
     "5": Text( "Open Browser to GitHub Repo. Fallback: [4]", 
-               style=Style( link="https://github.com/cyvu37/venmito-cyvu37" ) )
+               style=Style( link=GITHUB_URL ) )
 }
 K_HELP_DESK = ChainMap( D_HD_LEARN, D_HD_ACTION )
 """Dictionary for help selection."""
@@ -419,8 +454,9 @@ R_HELP_DESK = FUNC_table_system( "HELP DESK", { "Enter": CC, "Action": "bright_c
 try:
 
     class Process_Files():
-
-        #
+        """
+        The class to import files into the database.
+        """
 
         def __init__( self, engine: sqlalchemy.engine.Engine, conn: sqlalchemy.PoolProxiedConnection, if_exists: str ):
             
@@ -742,18 +778,17 @@ try:
                 self.engine = sqlalchemy.engine.create_engine( "postgresql+psycopg://postgres:Space!3742@localhost:5432/postgres" )
                 self.conn = self.engine.raw_connection()
             except:
-                # TO DO: Set up server from scratch here??
                 FUNC_capture_app_error("Can't connect to database.")
 
             # Check if tables exist.
-            tmp = pc( "* Would you like to start from scratch? ([green]y[/green]/[red]any[/red])\n: " , CD )
+            tmp = pc( "* Would you like to start from scratch? ([green]y[/green]/[red]OTHER[/red])\n: " , CD )
             b_first_time = CONSOLE.input(tmp)
             if b_first_time.lower() == "y":
                 CONSOLE.print(pc("* Starting from scratch...", CD))
                 self._func_first_time()
             
             CONSOLE.print(
-                pc("* All prerequisites satisfied!\n* Output saved to directory ", CD) + 
+                pc("* All prerequisites satisfied!\n* Future output saved to directory ", CD) + 
                 pc(f"\"{DIR_OUTPUT}\"", "gold1") + f"\n\n\n{R_ENTER}"
             )
             self.func_l1_menu_loop()
@@ -796,8 +831,9 @@ try:
             cur.close()
 
         
-        def _func_msg_bubble( self, default_msg: dict ):
-            """The function to print the message bubble.
+        def _func_MSG_BUBBLE( self, default_msg: dict ):
+            """
+            The function to print the message bubble.
 
             Args:
                 default_msg (dict): The message and format to 1) print when no changes are made (`self.b_msg_change = False`), or 2) set after changes are made (`self.b_msg_change = True`).
@@ -821,8 +857,9 @@ try:
                 self.msg.update( default_msg )
         
 
-        def _func_other_entries( self, inp: str ):
-            """Handle all other input values here.
+        def _func_OTHER_ENTRIES( self, inp: str ):
+            """
+            Handle all other input values here.
 
             Args:
                 inp (str): The input value.
@@ -848,7 +885,7 @@ try:
             """
             default_msg = deepcopy( self.msg )
             while True:
-                self._func_msg_bubble( default_msg )
+                self._func_MSG_BUBBLE( default_msg )
                 # Print menu + get input.
                 CONSOLE.print(R_MENU)
                 self.i_menu = CONSOLE.input(": ").lower()
@@ -867,7 +904,7 @@ try:
                     case "h" | "help":
                         self.func_helpdesk( R_MENU.title, K_MENU )
                     case _:
-                        self._func_other_entries( self.i_menu )
+                        self._func_OTHER_ENTRIES( self.i_menu )
 
         
         def func_helpdesk( self, menu_title: str, menu: dict[str, str] ):
@@ -884,7 +921,7 @@ try:
             self.msg.update( default_msg )
             CONSOLE.print(f"\n\n{R_LINE}\n")
             while True:
-                self._func_msg_bubble( default_msg )
+                self._func_MSG_BUBBLE( default_msg )
                 # Print menu + get input.
                 CONSOLE.print(R_HELP_DESK)
                 self.i_help = CONSOLE.input(": ").lower()
@@ -893,14 +930,28 @@ try:
                         ### DEV NOTE: Dead end right now.
                         self.b_msg_change = True
                         self._func_UNDER_CONSTRUCTION( K_HELP_DESK[self.i_help] )
+                    
                     case "2":
                         ### DEV NOTE: Dead end right now.
                         self.b_msg_change = True
                         self._func_UNDER_CONSTRUCTION( K_HELP_DESK[self.i_help] )
+                    
                     case "3":
-                        ### DEV NOTE: Dead end right now.
                         self.b_msg_change = True
-                        self._func_UNDER_CONSTRUCTION( K_HELP_DESK[self.i_help] )
+                        self.msg.update({ 
+                            "top": f"Output View", "top_color": CD,
+                            "mid": "SQL Scripts for Hot-N-Ready Views", "border_color": "bright_white",
+                            "bot": "Output printed. Press Enter to return to previous menu.", "bot_color": "green1"
+                            })
+                        self._func_MSG_BUBBLE( default_msg )
+                        CONSOLE.print(R_PFR_LIST)
+                        inp = CONSOLE.input( pc("Scroll up for table. Press Enter to continue (or q to quit). ", CD) )
+                        match inp:
+                            case "q" | "quit":
+                                self._func_quit()
+                            case _:
+                                pass
+                    
                     case "4":
                         self.b_msg_change = True
                         try:
@@ -908,16 +959,17 @@ try:
                             self.msg.update({"bot": "README.md opened.", "bot_color": "bright_green"})
                         except:
                             try:
-                                open_new_tab( "https://github.com/cyvu37/venmito-cyvu37" )
+                                open_new_tab( GITHUB_URL )
                                 self.msg.update({
                                     "bot": "Couldn't open README.md, but GitHub repo opened in local browser.",
                                     "bot_color": "bright_green"})
                             except:
                                 self.msg.update({"bot": "Couldn't open README.md or GitHub repo. Huh.", "bot_color": "dark_orange"})
+                    
                     case "5":
                         self.b_msg_change = True
                         try:
-                            open_new_tab( "https://github.com/cyvu37/venmito-cyvu37" )
+                            open_new_tab( GITHUB_URL )
                             self.msg.update({"bot": "GitHub repo opened in local browser.", "bot_color": "bright_green"})
                         except:
                             try:
@@ -925,10 +977,11 @@ try:
                                 self.msg.update({"bot": "Couldn't open GitHub repo, but README.md opened.", "bot_color": "bright_green"})
                             except:
                                 self.msg.update({"bot": "Couldn't open GitHub repo or README.md. Huh.", "bot_color": "dark_orange"})
+                    
                     case "p" | "previous":
                         break
                     case _:
-                        self._func_other_entries( self.i_help )
+                        self._func_OTHER_ENTRIES( self.i_help )
 
         
         def func_l2_t1s1_output( self ):
@@ -947,7 +1000,7 @@ try:
             }
             self.msg.update( default_msg )
             while True:
-                self._func_msg_bubble( default_msg )
+                self._func_MSG_BUBBLE( default_msg )
                 CONSOLE.print(R_OUTPUT)
                 self.i_output = CONSOLE.input(": ").lower()
                 if self.i_output in K_OUTPUT.keys():
@@ -963,7 +1016,7 @@ try:
                         case "h" | "help":
                             self.func_helpdesk( R_OUTPUT.title, K_OUTPUT )
                         case _:
-                            self._func_other_entries( self.i_output )
+                            self._func_OTHER_ENTRIES( self.i_output )
 
         
         def func_l3_t1s2_report( self ):
@@ -985,7 +1038,7 @@ try:
             }
             self.msg.update( default_msg )
             while True:
-                self._func_msg_bubble( default_msg )
+                self._func_MSG_BUBBLE( default_msg )
                 CONSOLE.print(R_PFR)
                 self.i_pfr = CONSOLE.input(": ").lower()
                 match self.i_pfr:
@@ -995,14 +1048,14 @@ try:
                     case _ if self.i_pfr in PFR_USER:
                         self.b_msg_change = True
                         view = PFR_KEYS[ int(self.i_pfr)-2 ]
-                        df = pd.read_sql_query( PFR_QUERIES[view], self.engine, dtype=str )
-                        self._func_export( df, default_msg, K_PFR[self.i_pfr] )
+                        df = pd.read_sql_query( PFR_QUERIES[view], self.engine )
+                        self._func_EXPORT( df, default_msg, K_PFR[self.i_pfr] )
                     case "p" | "previous":
                         break
                     case "h" | "help":
                         self.func_helpdesk( R_PFR.title, K_PFR )
                     case _:
-                        self._func_other_entries( self.i_pfr )
+                        self._func_OTHER_ENTRIES( self.i_pfr )
 
         
         def func_l4_t1c1_input( self ):
@@ -1024,7 +1077,7 @@ try:
             }
             self.msg.update( default_msg )
             while True:
-                self._func_msg_bubble( default_msg )
+                self._func_MSG_BUBBLE( default_msg )
                 CONSOLE.print( pc("* Fetching table list...", CD), end="\r" )
                 # Access and print list.
                 D_INPUT = pd.read_sql_query( "SELECT table_name FROM information_schema.tables WHERE table_schema='public'", self.engine, dtype=str )
@@ -1036,7 +1089,7 @@ try:
                 if self.i_input in D_INPUT.keys():
                     self.b_msg_change = True
                     df = pd.read_sql_query( f"SELECT * FROM {D_INPUT[self.i_input]}", self.engine, dtype=str )
-                    self._func_export( df, default_msg, D_INPUT[self.i_input].title() )
+                    self._func_EXPORT( df, default_msg, D_INPUT[self.i_input].title() )
                 else:
                     match self.i_input:
                         case "p" | "previous":
@@ -1044,19 +1097,26 @@ try:
                         case "h" | "help":
                             self.func_helpdesk( R_INPUT.title, D_INPUT )
                         case _:
-                            self._func_other_entries( self.i_input )
+                            self._func_OTHER_ENTRIES( self.i_input )
 
         
-        def _func_export( self, df: pd.DataFrame, default_msg: dict, fname: str ):
+        def _func_EXPORT( self, df: pd.DataFrame, default_msg: dict, fname: str ):
             """Universal function to export the desired output based on OUTPUT MENU: `K_OUTPUT[self.i_output]`
 
             Args:
                 df (pd.DataFrame): DataFrame to handle.
                 default_msg (dict): The default message pack of the parent function.
                 fname (str): The filename or table title.
-            """            
+            """
             if "Density" in K_OUTPUT[self.i_output]:
-                self._func_UNDER_CONSTRUCTION( K_OUTPUT[self.i_output] )
+                can_graph = True
+                try:    # Get one or more number columns.
+                    rs = df.select_dtypes( include=[int, float] )
+                    rs = rs[rs.columns[0]].drop_duplicates( ignore_index=True )
+                except: # Can't graph any density.
+                    can_graph = False
+                    self.msg.update({ "bot": "ERROR: Can't graph. Try printing or CSV.", "bot_color": "red", "border": "red" })
+                #self._func_UNDER_CONSTRUCTION( K_OUTPUT[self.i_output] )
 
             match self.i_output:    # Check `K_OUTPUT[self.i_output]` = ...
                 case "1":           # "Export Table: CSV"
@@ -1067,12 +1127,15 @@ try:
                     self.msg.update({ "bot": f"Exported to {fshrt}", "bot_color": "green1" })
                     Popen([OPENER, fpath])
                 case "2":           # "Export Density Graph"
-                    fpath = os.path.join( DIR_OUTPUT, f"{fname}.png" )
-                    ###
-                    fsplt = fpath.split(os.sep)
-                    fshrt = fsplt[0] + f"{os.sep}...{os.sep}" + os.sep.join(fsplt[-3:])
-                    #self.msg.update({ "bot": f"Exported to {fshrt}", "bot_color": "green1" })
-                    #Popen([OPENER, fpath])
+                    if can_graph:
+                        fpath = os.path.join( DIR_OUTPUT, f"{fname} density.png" )
+                        fig = plt.figure( fname, dpi=DPI, tight_layout=True, figsize=(3200/DPI, 1800/DPI) )
+                        fig.add_axes( rs.plot.density(), label=rs.name )
+                        fig.savefig( fpath )
+                        fsplt = fpath.split(os.sep)
+                        fshrt = fsplt[0] + f"{os.sep}...{os.sep}" + os.sep.join(fsplt[-3:])
+                        self.msg.update({ "bot": f"Exported to {fshrt}", "bot_color": "green1" })
+                        Popen([OPENER, fpath])
                 case "3":           # "Print 1st N Entries"
                     # Get 1st N or less entries.
                     res = df.head( self.n_print )
@@ -1089,19 +1152,21 @@ try:
                         "mid": fname, "border_color": "bright_white",
                         "bot": "Output printed. Press Enter to return to previous menu.", "bot_color": "green1"
                         })
-                    self._func_msg_bubble( default_msg )
+                    self._func_MSG_BUBBLE( default_msg )
                     CONSOLE.print(FUNC_table_data( 
                         fname, dict.fromkeys( df.columns, "bright_white" ), res, "bright_white" 
                         ))
-                    inp = CONSOLE.input( pc("Press Enter to continue (or q to quit). ", CD) )
+                    inp = CONSOLE.input( pc("Scroll up for table. Press Enter to continue (or q to quit). ", CD) )
                     match inp:
                         case "q" | "quit":
                             self._func_quit()
                         case _:
                             pass
                 case "4":           # "Print Density Statistics"
-                    pass
-                    ###
+                    if can_graph:
+                        pass
+                    self._func_UNDER_CONSTRUCTION( K_OUTPUT[self.i_output] )
+                    ### Statistics on rs.
                     '''self.msg.update({ 
                         "top": "Output View | Density Statistics", "top_color": CD,
                         "mid": fname, "border_color": "bright_white",
@@ -1111,7 +1176,7 @@ try:
                     CONSOLE.print(FUNC_table_data( 
                         fname, dict.fromkeys( df.columns, "bright_white" ), table, "bright_white" 
                         ))'''
-                    #CONSOLE.input( fcolor("Press Enter to continue. ", CD) )
+                    #inp = CONSOLE.input( pc("Scroll up for table. Press Enter to continue (or q to quit). ", CD) )
             #
 
         
@@ -1130,7 +1195,7 @@ try:
             }
             self.msg.update( default_msg )
             while True:
-                self._func_msg_bubble( default_msg )
+                self._func_MSG_BUBBLE( default_msg )
                 CONSOLE.print(R_OUTPUT)
                 self.i_output = CONSOLE.input(": ").lower()
                 if self.i_output in K_OUTPUT.keys():
@@ -1146,7 +1211,7 @@ try:
                         case "h" | "help":
                             self.func_helpdesk( R_OUTPUT.title, K_OUTPUT )
                         case _:
-                            self._func_other_entries( self.i_output )
+                            self._func_OTHER_ENTRIES( self.i_output )
 
         
         def func_l3_sql( self ):
@@ -1167,7 +1232,7 @@ try:
             }
             self.msg.update( default_msg )
             while True:
-                self._func_msg_bubble( default_msg )
+                self._func_MSG_BUBBLE( default_msg )
                 query = CONSOLE.input("SQL Query: ")
                 match query:
                     case "p" | "previous":
@@ -1179,7 +1244,7 @@ try:
                         self.b_msg_change = True
                         try:
                             df = pd.read_sql_query( query, self.engine, dtype=str )
-                            self._func_export( df, default_msg, fname )
+                            self._func_EXPORT( df, default_msg, fname )
                         except:
                             self.msg.update({ 
                                 "bot": f"WARNING! Invalid query. Try again. | Output: {txt}",
